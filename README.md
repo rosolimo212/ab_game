@@ -41,7 +41,7 @@ streamlit run ui/streamlit_app.py
 ./pre_commit_check.sh
 ```
 
-Ожидается: **43 passed** (pytest) и **15 OK** (business_checks).
+Ожидается: **47 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 
@@ -87,21 +87,19 @@ testing:
 | event_name | Когда | Параметры |
 |------------|--------|-----------|
 | `start_screen_visit` | Первый заход / `handle_start` | — |
-| `button_start` | Клик «Начать» | `action` |
-| `button_restart` | Клик «Играть снова» | `action` |
-| `button_guess_effect` | Клик «Эффект есть» | `action` |
-| `button_guess_no_effect` | Клик «Эффекта нет» | `action` |
+| `button_continue` | Клик «Далее» после ввода имени | `action` |
+| `name_entered` | Имя сохранено | `user_name` |
+| `button_difficulty_easy` / `_normal` / `_hard` | Выбор сложности | `action` |
+| `session_start` | Старт игровой сессии | `rounds_per_session`, `difficulty`, `noise`, `effect_relative_range`, `user_name` |
+| `round_shown` | Показан график раунда | `round_index`, `difficulty`, `noise`, `mean_a`, `mean_b`, `target_a`, `target_b`, `p_value` |
+| `button_guess_effect` / `button_guess_no_effect` | Клик догадки | `action` |
+| `guess_submitted` | Догадка обработана | `round_index`, `user_answer`, `guess_has_effect`, `test_significant`, `points`, `p_value`, `difficulty` |
 | `button_next_round` | Клик «Далее» | `action` |
-| `session_start` | Старт новой игровой сессии | `rounds_per_session` |
-| `round_shown` | Показан график раунда | `round_index`, `noise`, `mean_a`, `mean_b`, `p_value` |
-| `guess_submitted` | Догадка обработана (после клика) | `round_index`, `user_answer` (`effect` / `no_effect`), `guess_has_effect`, `test_significant`, `points`, `p_value` |
-| `game_finished` | Сессия завершена, показан итог | `n_correct`, `n_rounds`, `accuracy`, `ci_low`, `ci_high`, `p_value`, `significant` |
+| `button_end_game` | Клик «Закончить игру» | `action` |
+| `game_finished` | Итог (полный или досрочный) | `n_correct`, `n_rounds`, `accuracy`, CI, `p_value`, `difficulty`, `user_name`, `early_exit` |
+| `button_restart` | «Играть снова» | `action` |
 
-Пояснения:
-
-- `mean_a` / `mean_b` — пулырованные доли веток за все дни раунда.
-- `p_value` в `round_shown` — z-тест по данным графика (для аналитики; игрок его ещё не видит).
-- Клики `button_*` и бизнес-события (`guess_submitted`, `round_shown`, …) пишутся отдельно: клик — факт нажатия, остальное — результат обработки.
+Сложность: **лёгкий** (большая разница, низкий шум) / **нормальный** / **тяжёлый** (малая разница, высокий шум) — пресеты в `settings.yaml` → `game.difficulties`.
 
 ## Уже в коде
 

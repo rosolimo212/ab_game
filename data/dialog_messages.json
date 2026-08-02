@@ -1,44 +1,71 @@
 {
-  "_description": "Тексты ab_game. Пустая строка канала → default. Плейсхолдеры: {round_index}, {rounds_total}, {points}, {p_value}, {verdict}, {n_correct}, {accuracy}, {ci_low}, {ci_high}, {session_p}, {session_verdict}.",
+  "_description": "Тексты ab_game. Плейсхолдеры: {user_name}, {rounds_total}, {round_index}, {difficulty}, {points}, {p_value}, {verdict}, {n_correct}, {accuracy}, {ci_low}, {ci_high}, {session_p}, {session_verdict}.",
   "messages": [
     {
       "id": 1,
       "name": "welcome",
-      "when": "Экран START: первый визит / после рестарта.",
-      "default": "Игра в A/B-тесты.\n\nПо графику двух веток угадайте, есть ли статистически значимый эффект (α = 5%). Затем сразу сверим с z-тестом.\n\nВ сессии {rounds_total} раундов. В конце — ваша доля верных с доверительным интервалом и p-value (мета-ирония).",
+      "when": "Экран START: попросить представиться.",
+      "default": "Игра в A/B-тесты.\n\nПо графику двух веток угадайте, есть ли статистически значимый эффект (α = 5%). Затем сразу сверим с z-тестом.\n\nВ полной сессии {rounds_total} раундов; можно закончить раньше.\n\nКак вас зовут?",
       "console": "",
       "telegram": "",
       "browser": ""
     },
     {
       "id": 2,
-      "name": "round_prompt",
-      "when": "Экран ROUND: показать график и попросить догадку.",
-      "default": "Раунд {round_index} из {rounds_total}.\n\nЕсть ли значимый эффект между ветками A и B?",
+      "name": "empty_name",
+      "when": "Пустое имя на START.",
+      "default": "Имя не может быть пустым. Как вас зовут?\n\n(В сессии до {rounds_total} раундов.)",
       "console": "",
       "telegram": "",
       "browser": ""
     },
     {
       "id": 3,
-      "name": "feedback",
-      "when": "Экран FEEDBACK: сразу после догадки.",
-      "default": "Раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\nВаш балл за раунд: {points}.",
+      "name": "choose_difficulty",
+      "when": "Экран DIFFICULTY.",
+      "default": "Приятно познакомиться, {user_name}!\n\nВыберите уровень сложности:\n• лёгкий — большая разница метрик, низкий шум;\n• нормальный — баланс как в настройках по умолчанию;\n• тяжёлый — малая разница, высокий шум.",
       "console": "",
       "telegram": "",
       "browser": ""
     },
     {
       "id": 4,
-      "name": "summary",
-      "when": "Экран SUMMARY: итог сессии.",
-      "default": "Сессия завершена.\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\nWilson CI ({ci_level}%): [{ci_low}; {ci_high}].\nH₀: доля = 50% → p-value = {session_p}, {session_verdict}.",
+      "name": "round_prompt",
+      "when": "Экран ROUND.",
+      "default": "{user_name}, раунд {round_index} из {rounds_total} ({difficulty}).\n\nЕсть ли значимый эффект между ветками A и B?",
       "console": "",
       "telegram": "",
       "browser": ""
     },
     {
       "id": 5,
+      "name": "feedback",
+      "when": "Экран FEEDBACK.",
+      "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\nБалл за раунд: {points}.\n\nСправа от графика — целевые и фактические средние.",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 6,
+      "name": "summary",
+      "when": "Экран SUMMARY с результатами.",
+      "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\nWilson CI ({ci_level}%): [{ci_low}; {ci_high}].\nH₀: доля = 50% → p-value = {session_p}, {session_verdict}.",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 7,
+      "name": "summary_empty",
+      "when": "SUMMARY без сыгранных раундов.",
+      "default": "{user_name}, игра завершена до первого ответа (сложность: {difficulty}).\n\nСыграйте хотя бы один раунд, чтобы увидеть статистику.",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 8,
       "name": "browser_page_title",
       "when": "streamlit.set_page_config",
       "default": "ab_game — A/B на глаз",
@@ -47,10 +74,19 @@
       "browser": ""
     },
     {
-      "id": 6,
+      "id": 9,
       "name": "browser_title",
       "when": "Заголовок страницы Streamlit.",
       "default": "A/B на глаз",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 10,
+      "name": "browser_name_label",
+      "when": "Подпись поля имени.",
+      "default": "Ваше имя",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -59,44 +95,80 @@
   "buttons": [
     {
       "id": 1,
-      "name": "start",
-      "when": "START → начать сессию",
-      "default": "Начать",
-      "console": "",
-      "telegram": "",
-      "browser": ""
-    },
-    {
-      "id": 2,
-      "name": "guess_effect",
-      "when": "ROUND: догадка «эффект есть»",
-      "default": "Эффект есть",
-      "console": "",
-      "telegram": "",
-      "browser": ""
-    },
-    {
-      "id": 3,
-      "name": "guess_no_effect",
-      "when": "ROUND: догадка «эффекта нет»",
-      "default": "Эффекта нет",
-      "console": "",
-      "telegram": "",
-      "browser": ""
-    },
-    {
-      "id": 4,
-      "name": "next_round",
-      "when": "FEEDBACK → следующий раунд или итог",
+      "name": "continue",
+      "when": "START → сохранить имя",
       "default": "Далее",
       "console": "",
       "telegram": "",
       "browser": ""
     },
     {
+      "id": 2,
+      "name": "difficulty_easy",
+      "when": "DIFFICULTY: лёгкий",
+      "default": "Лёгкий",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 3,
+      "name": "difficulty_normal",
+      "when": "DIFFICULTY: нормальный",
+      "default": "Нормальный",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 4,
+      "name": "difficulty_hard",
+      "when": "DIFFICULTY: тяжёлый",
+      "default": "Тяжёлый",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
       "id": 5,
+      "name": "guess_effect",
+      "when": "ROUND: эффект есть",
+      "default": "Эффект есть",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 6,
+      "name": "guess_no_effect",
+      "when": "ROUND: эффекта нет",
+      "default": "Эффекта нет",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 7,
+      "name": "next_round",
+      "when": "FEEDBACK → далее",
+      "default": "Далее",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 8,
+      "name": "end_game",
+      "when": "Досрочно завершить",
+      "default": "Закончить игру",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 9,
       "name": "restart",
-      "when": "SUMMARY → новая сессия",
+      "when": "SUMMARY → снова",
       "default": "Играть снова",
       "console": "",
       "telegram": "",

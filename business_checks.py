@@ -33,10 +33,11 @@ from core.logging.factory import build_logger
 from core.logging.noop import NoopLogger
 from core.messages import button, clear_messages_cache, message
 from core.models import (
+    ACTION_DIFFICULTY_NORMAL,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
+    ACTION_NAME_ENTERED,
     ACTION_NEXT_ROUND,
-    ACTION_START_SESSION,
     GameSession,
     Screen,
     UserIdentity,
@@ -48,7 +49,9 @@ from ui.charts import build_ab_chart
 
 REQUIRED_EVENTS = [
     "start_screen_visit",
-    "button_start",
+    "button_continue",
+    "name_entered",
+    "button_difficulty_normal",
     "session_start",
     "round_shown",
     "button_guess_effect",
@@ -191,22 +194,38 @@ def _play_full_session(
     *,
     external_id: str = "biz-check-user",
 ) -> tuple[UserIdentity, GameSession]:
-    """Проходит START → все раунды → SUMMARY; чередует догадки."""
+    """Проходит имя → сложность → все раунды → SUMMARY; чередует догадки."""
     identity = logger.ensure_user(channel, external_id)
     service.handle_start(identity, channel)
-    resp = service.handle_action(identity, channel, ACTION_START_SESSION, {})
+    service.handle_action(
+        identity, channel, ACTION_NAME_ENTERED, {"text": "Бизнес-тест"}
+    )
+    resp = service.handle_action(
+        identity,
+        channel,
+        ACTION_DIFFICULTY_NORMAL,
+        {"user_name": "Бизнес-тест"},
+    )
     game = resp.game
     if game is None:
-        raise AssertionError("После start_session нет game")
+        raise AssertionError("После выбора сложности нет game")
 
     rounds_total = game.rounds_per_session
     for i in range(rounds_total):
         action = ACTION_GUESS_EFFECT if i % 2 == 0 else ACTION_GUESS_NO_EFFECT
-        fb = service.handle_action(identity, channel, action, {"game": game})
+        fb = service.handle_action(
+            identity,
+            channel,
+            action,
+            {"game": game, "user_name": "Бизнес-тест"},
+        )
         if fb.screen != Screen.FEEDBACK or fb.game is None:
             raise AssertionError(f"Ожидали FEEDBACK на раунде {i + 1}")
         nxt = service.handle_action(
-            identity, channel, ACTION_NEXT_ROUND, {"game": fb.game}
+            identity,
+            channel,
+            ACTION_NEXT_ROUND,
+            {"game": fb.game, "user_name": "Бизнес-тест"},
         )
         game = nxt.game
         if game is None:
@@ -246,7 +265,17 @@ def check_dialog_messages_and_buttons() -> None:
     welcome = message("welcome", "streamlit", rounds_total=20)
     if "20" not in welcome:
         raise AssertionError("welcome не подставляет rounds_total")
-    for name in ("start", "guess_effect", "guess_no_effect", "next_round", "restart"):
+    for name in (
+        "continue",
+        "difficulty_easy",
+        "difficulty_normal",
+        "difficulty_hard",
+        "guess_effect",
+        "guess_no_effect",
+        "next_round",
+        "end_game",
+        "restart",
+    ):
         if not button(name, "streamlit").strip():
             raise AssertionError(f"Пустая кнопка {name!r}")
 
@@ -356,7 +385,9 @@ def check_users_last_active_updates() -> None:
     service.handle_start(identity, "streamlit")
     first = logger.users[identity.user_id]["last_active_at"]
     time.sleep(0.02)
-    service.handle_action(identity, "streamlit", ACTION_START_SESSION, {})
+    service.handle_action(
+        identity, "streamlit", ACTION_NAME_ENTERED, {"text": "Актив"}
+    )
     second = logger.users[identity.user_id]["last_active_at"]
     if second < first:
         raise AssertionError("last_active_at не обновился")
@@ -384,13 +415,21 @@ def check_guess_event_params_match_score() -> None:
     service, logger = _make_service(rounds=1)
     identity = logger.ensure_user("streamlit", "guess-params")
     service.handle_start(identity, "streamlit")
-    round_resp = service.handle_action(identity, "streamlit", ACTION_START_SESSION, {})
+    service.handle_action(
+        identity, "streamlit", ACTION_NAME_ENTERED, {"text": "Геймер"}
+    )
+    round_resp = service.handle_action(
+        identity,
+        "streamlit",
+        ACTION_DIFFICULTY_NORMAL,
+        {"user_name": "Геймер"},
+    )
     assert round_resp.game is not None and round_resp.game.round_data is not None
     fb = service.handle_action(
         identity,
         "streamlit",
         ACTION_GUESS_EFFECT,
-        {"game": round_resp.game},
+        {"game": round_resp.game, "user_name": "Геймер"},
     )
     assert fb.game is not None and fb.game.last_round_score is not None
     guess_events = [e for e in logger.events if e["event_name"] == "guess_submitted"]

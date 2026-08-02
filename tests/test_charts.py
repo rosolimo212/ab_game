@@ -45,6 +45,9 @@ def test_build_ab_chart_two_traces() -> None:
     assert fig.data[1].y[0] == 0.2
     assert fig.layout.xaxis.title.text == "День"
     assert fig.layout.yaxis.title.text == "Доля"
+    # ось Y: 0 .. max*1.15 (max rate = 0.22)
+    assert fig.layout.yaxis.range[0] == 0.0
+    assert abs(fig.layout.yaxis.range[1] - 0.22 * 1.15) < 1e-9
 
 
 def test_build_ab_chart_hover_has_counts() -> None:

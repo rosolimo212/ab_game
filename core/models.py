@@ -18,20 +18,28 @@ from typing import Any
 
 
 class Screen(str, Enum):
-    """Экраны пользовательского сценария MVP."""
+    """Экраны пользовательского сценария."""
 
     START = "start"
+    DIFFICULTY = "difficulty"
     ROUND = "round"
     FEEDBACK = "feedback"
     SUMMARY = "summary"
 
 
 # Действия UI → AppService.handle_action (не путать с event_name в логах).
-ACTION_START_SESSION = "start_session"
+ACTION_NAME_ENTERED = "name_entered"
+ACTION_DIFFICULTY_EASY = "difficulty_easy"
+ACTION_DIFFICULTY_NORMAL = "difficulty_normal"
+ACTION_DIFFICULTY_HARD = "difficulty_hard"
 ACTION_GUESS_EFFECT = "guess_effect"
 ACTION_GUESS_NO_EFFECT = "guess_no_effect"
 ACTION_NEXT_ROUND = "next_round"
+ACTION_END_GAME = "end_game"
 ACTION_RESTART = "restart"
+
+# Совместимость: старый start_session = выбор нормальной сложности.
+ACTION_START_SESSION = ACTION_DIFFICULTY_NORMAL
 
 
 @dataclass(frozen=True)
@@ -190,6 +198,10 @@ class GameSession:
     last_z_result: ZTestResult | None = None
     last_round_score: RoundScore | None = None
     session_score: SessionScore | None = None
+    difficulty: str = "normal"
+    user_name: str = ""
+    # Рабочий noise для текущей сложности (для логов / UI).
+    noise: float = 0.05
 
 
 @dataclass
@@ -205,6 +217,7 @@ class AppResponse:
     screen: Screen = Screen.START
     finished: bool = False
     game: GameSession | None = None
+    user_name: str | None = None
 
 
 @dataclass

@@ -13,15 +13,20 @@ if str(ROOT) not in sys.path:
 
 from core.messages import button, message
 from core.models import (
+    ACTION_DIFFICULTY_EASY,
+    ACTION_DIFFICULTY_HARD,
+    ACTION_DIFFICULTY_NORMAL,
+    ACTION_END_GAME,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
+    ACTION_NAME_ENTERED,
     ACTION_NEXT_ROUND,
     ACTION_RESTART,
-    ACTION_START_SESSION,
     Screen,
 )
 from ui.base import build_app_service
 from ui.charts import build_ab_chart
+from ui.feedback_panel import format_feedback_stats
 from ui.helpers import (
     apply_response,
     build_payload,
@@ -39,11 +44,24 @@ def _init_session(service: Any, state: Any) -> None:
     apply_response(state, response)
 
 
-def _dispatch(service: Any, state: Any, action: str) -> None:
+def _dispatch(service: Any, state: Any, action: str, *, text: str | None = None) -> None:
     identity = get_identity(state)
-    payload = build_payload(game=state.get("game"), screen=state.get("screen"))
+    payload = build_payload(
+        game=state.get("game"),
+        screen=state.get("screen"),
+        user_name=state.get("user_name"),
+        text=text,
+    )
     response = service.handle_action(identity, "streamlit", action, payload)
     apply_response(state, response)
+
+
+def _end_game_button(service: Any, state: Any) -> None:
+    import streamlit as st
+
+    if st.button(button("end_game", "streamlit"), key="btn_end_game"):
+        _dispatch(service, state, ACTION_END_GAME)
+        st.rerun()
 
 
 def run_streamlit(config: dict[str, Any]) -> None:
@@ -67,9 +85,27 @@ def run_streamlit(config: dict[str, Any]) -> None:
     game = state.get("game")
 
     if screen == Screen.START.value:
-        if st.button(button("start", "streamlit"), key="btn_start"):
-            _dispatch(service, state, ACTION_START_SESSION)
+        name = st.text_input(
+            message("browser_name_label", "streamlit"),
+            key="name_input",
+            value=str(state.get("user_name") or ""),
+        )
+        if st.button(button("continue", "streamlit"), key="btn_continue"):
+            _dispatch(service, state, ACTION_NAME_ENTERED, text=name)
             st.rerun()
+
+    elif screen == Screen.DIFFICULTY.value:
+        cols = st.columns(3)
+        actions = (
+            (ACTION_DIFFICULTY_EASY, "difficulty_easy", "btn_diff_easy"),
+            (ACTION_DIFFICULTY_NORMAL, "difficulty_normal", "btn_diff_normal"),
+            (ACTION_DIFFICULTY_HARD, "difficulty_hard", "btn_diff_hard"),
+        )
+        for col, (action, btn_name, key) in zip(cols, actions):
+            with col:
+                if st.button(button(btn_name, "streamlit"), key=key):
+                    _dispatch(service, state, action)
+                    st.rerun()
 
     elif screen == Screen.ROUND.value:
         if game is not None and game.round_data is not None:
@@ -86,14 +122,27 @@ def run_streamlit(config: dict[str, Any]) -> None:
             ):
                 _dispatch(service, state, ACTION_GUESS_NO_EFFECT)
                 st.rerun()
+        _end_game_button(service, state)
 
     elif screen == Screen.FEEDBACK.value:
-        if game is not None and game.round_data is not None:
-            fig = build_ab_chart(game.round_data, title=None)
-            st.plotly_chart(fig, use_container_width=True)
+        left, right = st.columns([2, 1])
+        with left:
+            if game is not None and game.round_data is not None:
+                fig = build_ab_chart(game.round_data, title=None)
+                st.plotly_chart(fig, use_container_width=True)
+        with right:
+            if (
+                game is not None
+                and game.round_data is not None
+                and game.last_z_result is not None
+            ):
+                st.markdown(
+                    format_feedback_stats(game.round_data, game.last_z_result)
+                )
         if st.button(button("next_round", "streamlit"), key="btn_next"):
             _dispatch(service, state, ACTION_NEXT_ROUND)
             st.rerun()
+        _end_game_button(service, state)
 
     elif screen == Screen.SUMMARY.value:
         if st.button(button("restart", "streamlit"), key="btn_restart"):

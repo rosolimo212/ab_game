@@ -3,15 +3,9 @@
 AppService — оркестратор игрового сценария.
 
 Цель:
-    Единая точка входа для Streamlit (и позже других UI):
-    старт сессии → раунд → догадка → фидбек → итог.
+    Имя → сложность → раунды → фидбек → итог (или досрочный выход).
 
-Поток:
-    UI → handle_start / handle_action(identity, channel, action, payload)
-    → generator / stats / scoring / brain → AppResponse (+ GameSession в response.game).
-
-Состояние игры передаётся через payload["game"] (из session_state), потому что
-Streamlit пересоздаёт AppService на каждый rerun.
+Состояние игры передаётся через payload["game"] (из session_state).
 """
 
 from __future__ import annotations
@@ -21,15 +15,33 @@ from typing import Any
 
 import numpy as np
 
-from core.brain import on_feedback, on_round, on_summary, on_welcome
+from core.brain import (
+    on_difficulty,
+    on_empty_name,
+    on_feedback,
+    on_round,
+    on_summary,
+    on_summary_empty,
+    on_welcome,
+)
+from core.difficulty import (
+    DIFFICULTY_EASY,
+    DIFFICULTY_HARD,
+    DIFFICULTY_NORMAL,
+    resolve_game_cfg,
+)
 from core.generator import generate_round
 from core.logging.base import EventLogger
 from core.models import (
+    ACTION_DIFFICULTY_EASY,
+    ACTION_DIFFICULTY_HARD,
+    ACTION_DIFFICULTY_NORMAL,
+    ACTION_END_GAME,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
+    ACTION_NAME_ENTERED,
     ACTION_NEXT_ROUND,
     ACTION_RESTART,
-    ACTION_START_SESSION,
     AppResponse,
     GameSession,
     RoundData,
@@ -38,13 +50,22 @@ from core.models import (
 from core.scoring import score_round, score_session
 from core.stats import z_test_round
 
-# ACTION_* → имя события клика по кнопке в логах.
+ACTION_TO_DIFFICULTY = {
+    ACTION_DIFFICULTY_EASY: DIFFICULTY_EASY,
+    ACTION_DIFFICULTY_NORMAL: DIFFICULTY_NORMAL,
+    ACTION_DIFFICULTY_HARD: DIFFICULTY_HARD,
+}
+
 BUTTON_CLICK_EVENTS = {
-    ACTION_START_SESSION: "button_start",
-    ACTION_RESTART: "button_restart",
+    ACTION_NAME_ENTERED: "button_continue",
+    ACTION_DIFFICULTY_EASY: "button_difficulty_easy",
+    ACTION_DIFFICULTY_NORMAL: "button_difficulty_normal",
+    ACTION_DIFFICULTY_HARD: "button_difficulty_hard",
     ACTION_GUESS_EFFECT: "button_guess_effect",
     ACTION_GUESS_NO_EFFECT: "button_guess_no_effect",
     ACTION_NEXT_ROUND: "button_next_round",
+    ACTION_END_GAME: "button_end_game",
+    ACTION_RESTART: "button_restart",
 }
 
 
@@ -78,7 +99,6 @@ class AppService:
     def _log_button_click(
         self, identity: UserIdentity, channel: str, action: str
     ) -> None:
-        """Явное событие клика по кнопке UI."""
         event_name = BUTTON_CLICK_EVENTS.get(action)
         if event_name is None:
             return
@@ -90,15 +110,22 @@ class AppService:
         )
 
     def _round_shown_params(
-        self, round_index: int, round_data: RoundData
+        self,
+        round_index: int,
+        round_data: RoundData,
+        *,
+        noise: float,
+        difficulty: str,
     ) -> dict[str, Any]:
-        """Параметры раунда для лога: шум, средние A/B, p-value z-теста."""
         z_result = z_test_round(round_data, alpha=self._alpha())
         return {
             "round_index": round_index,
-            "noise": float(self._game_cfg()["noise"]),
+            "difficulty": difficulty,
+            "noise": noise,
             "mean_a": round_data.branch_a.pooled_rate,
             "mean_b": round_data.branch_b.pooled_rate,
+            "target_a": round_data.branch_a.true_p,
+            "target_b": round_data.branch_b.true_p,
             "p_value": z_result.p_value,
         }
 
@@ -108,7 +135,7 @@ class AppService:
         channel: str,
         context: dict[str, Any] | None = None,
     ) -> AppResponse:
-        """Первый визит: приветствие, без старта раундов."""
+        """Первый визит: имя или сразу выбор сложности, если имя уже есть."""
         _ = context
         identity = self._resolve_identity(identity, channel)
         self._ensure_user_stub(identity, channel)
@@ -118,6 +145,10 @@ class AppService:
             channel=channel,
             event_parameters=None,
         )
+        profile = self.logger.get_user_profile(identity) or {}
+        existing_name = str(profile.get("user_name") or "").strip()
+        if existing_name:
+            return on_difficulty(channel, existing_name)
         return on_welcome(channel, self._rounds_per_session())
 
     def handle_action(
@@ -129,34 +160,93 @@ class AppService:
     ) -> AppResponse:
         payload = payload or {}
         identity = self._resolve_identity(identity, channel)
-        self._touch_user(identity, channel)
         self._log_button_click(identity, channel, action)
 
-        if action in (ACTION_START_SESSION, ACTION_RESTART):
-            return self._start_session(identity, channel)
+        if action == ACTION_NAME_ENTERED:
+            return self._handle_name_entered(identity, channel, payload)
+
+        if action in ACTION_TO_DIFFICULTY:
+            return self._start_session(
+                identity,
+                channel,
+                payload,
+                difficulty=ACTION_TO_DIFFICULTY[action],
+            )
 
         if action == ACTION_GUESS_EFFECT:
+            self._touch_user(identity, channel, payload)
             return self._handle_guess(identity, channel, payload, True)
 
         if action == ACTION_GUESS_NO_EFFECT:
+            self._touch_user(identity, channel, payload)
             return self._handle_guess(identity, channel, payload, False)
 
         if action == ACTION_NEXT_ROUND:
+            self._touch_user(identity, channel, payload)
             return self._handle_next(identity, channel, payload)
+
+        if action == ACTION_END_GAME:
+            self._touch_user(identity, channel, payload)
+            return self._end_game(identity, channel, payload)
+
+        if action == ACTION_RESTART:
+            self._touch_user(identity, channel, payload)
+            user_name = str(payload.get("user_name") or "").strip()
+            if not user_name:
+                profile = self.logger.get_user_profile(identity) or {}
+                user_name = str(profile.get("user_name") or "").strip()
+            if user_name:
+                return on_difficulty(channel, user_name)
+            return on_welcome(channel, self._rounds_per_session())
 
         return on_welcome(channel, self._rounds_per_session())
 
     def _ensure_user_stub(self, identity: UserIdentity, channel: str) -> None:
         now = datetime.now()
+        profile = self.logger.get_user_profile(identity) or {}
+        existing_name = str(profile.get("user_name") or "")
+        reg = profile.get("registration_date")
+        if not isinstance(reg, datetime):
+            reg = now
         self.logger.upsert_user(
             identity=identity,
-            user_name="",
-            registration_date=now,
+            user_name=existing_name,
+            registration_date=reg,
             registration_channel=channel,
             last_active_at=now,
         )
 
-    def _touch_user(self, identity: UserIdentity, channel: str) -> None:
+    def _touch_user(
+        self,
+        identity: UserIdentity,
+        channel: str,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        payload = payload or {}
+        now = datetime.now()
+        profile = self.logger.get_user_profile(identity) or {}
+        user_name = str(payload.get("user_name") or profile.get("user_name") or "")
+        reg = profile.get("registration_date")
+        if not isinstance(reg, datetime):
+            reg = now
+        self.logger.upsert_user(
+            identity=identity,
+            user_name=user_name,
+            registration_date=reg,
+            registration_channel=channel,
+            last_active_at=now,
+        )
+
+    def _handle_name_entered(
+        self,
+        identity: UserIdentity,
+        channel: str,
+        payload: dict[str, Any],
+    ) -> AppResponse:
+        user_name = str(payload.get("text") or payload.get("user_name") or "").strip()
+        if not user_name:
+            return on_empty_name(channel, self._rounds_per_session())
+
         now = datetime.now()
         profile = self.logger.get_user_profile(identity) or {}
         reg = profile.get("registration_date")
@@ -164,34 +254,67 @@ class AppService:
             reg = now
         self.logger.upsert_user(
             identity=identity,
-            user_name=str(profile.get("user_name") or ""),
+            user_name=user_name,
             registration_date=reg,
             registration_channel=channel,
             last_active_at=now,
         )
+        self.logger.log_event(
+            identity=identity,
+            event_name="name_entered",
+            channel=channel,
+            event_parameters={"user_name": user_name},
+        )
+        return on_difficulty(channel, user_name)
 
     def _start_session(
-        self, identity: UserIdentity, channel: str
+        self,
+        identity: UserIdentity,
+        channel: str,
+        payload: dict[str, Any],
+        *,
+        difficulty: str,
     ) -> AppResponse:
-        rounds_total = self._rounds_per_session()
-        round_data = generate_round(self._game_cfg(), rng=self.rng)
+        self._touch_user(identity, channel, payload)
+        profile = self.logger.get_user_profile(identity) or {}
+        user_name = str(
+            payload.get("user_name") or profile.get("user_name") or ""
+        ).strip()
+        if not user_name:
+            return on_welcome(channel, self._rounds_per_session())
+
+        session_cfg = resolve_game_cfg(self._game_cfg(), difficulty)
+        rounds_total = int(session_cfg["rounds_per_session"])
+        noise = float(session_cfg["noise"])
+        round_data = generate_round(session_cfg, rng=self.rng)
         game = GameSession(
             round_index=1,
             rounds_per_session=rounds_total,
             round_data=round_data,
             round_scores=(),
+            difficulty=difficulty,
+            user_name=user_name,
+            noise=noise,
         )
         self.logger.log_event(
             identity=identity,
             event_name="session_start",
             channel=channel,
-            event_parameters={"rounds_per_session": rounds_total},
+            event_parameters={
+                "rounds_per_session": rounds_total,
+                "difficulty": difficulty,
+                "noise": noise,
+                "effect_relative_range": float(session_cfg["effect_relative_range"]),
+                "user_name": user_name,
+            },
         )
         self.logger.log_event(
             identity=identity,
             event_name="round_shown",
             channel=channel,
-            event_parameters=self._round_shown_params(1, round_data),
+            event_parameters=self._round_shown_params(
+                1, round_data, noise=noise, difficulty=difficulty
+            ),
         )
         return on_round(channel, game)
 
@@ -223,6 +346,9 @@ class AppService:
             last_z_result=z_result,
             last_round_score=round_score,
             session_score=None,
+            difficulty=game.difficulty,
+            user_name=game.user_name,
+            noise=game.noise,
         )
         self.logger.log_event(
             identity=identity,
@@ -235,9 +361,75 @@ class AppService:
                 "test_significant": z_result.significant,
                 "points": round_score.points,
                 "p_value": z_result.p_value,
+                "difficulty": updated.difficulty,
             },
         )
         return on_feedback(channel, updated)
+
+    def _finish_with_scores(
+        self,
+        identity: UserIdentity,
+        channel: str,
+        game: GameSession,
+    ) -> AppResponse:
+        if not game.round_scores:
+            self.logger.log_event(
+                identity=identity,
+                event_name="game_finished",
+                channel=channel,
+                event_parameters={
+                    "n_correct": 0,
+                    "n_rounds": 0,
+                    "early_exit": True,
+                    "difficulty": game.difficulty,
+                    "user_name": game.user_name,
+                },
+            )
+            return on_summary_empty(channel, game.user_name, game.difficulty)
+
+        session_score = score_session(game.round_scores, alpha=self._alpha())
+        finished = GameSession(
+            round_index=game.round_index,
+            rounds_per_session=game.rounds_per_session,
+            round_data=None,
+            round_scores=game.round_scores,
+            last_z_result=game.last_z_result,
+            last_round_score=game.last_round_score,
+            session_score=session_score,
+            difficulty=game.difficulty,
+            user_name=game.user_name,
+            noise=game.noise,
+        )
+        self.logger.log_event(
+            identity=identity,
+            event_name="game_finished",
+            channel=channel,
+            event_parameters={
+                "n_correct": session_score.n_correct,
+                "n_rounds": session_score.n_rounds,
+                "accuracy": session_score.accuracy,
+                "ci_low": session_score.ci_low,
+                "ci_high": session_score.ci_high,
+                "p_value": session_score.p_value,
+                "significant": session_score.significant,
+                "difficulty": finished.difficulty,
+                "user_name": finished.user_name,
+                "early_exit": len(game.round_scores) < game.rounds_per_session,
+            },
+        )
+        return on_summary(channel, finished)
+
+    def _end_game(
+        self,
+        identity: UserIdentity,
+        channel: str,
+        payload: dict[str, Any],
+    ) -> AppResponse:
+        game = payload.get("game")
+        if not isinstance(game, GameSession):
+            user_name = str(payload.get("user_name") or "").strip()
+            return on_summary_empty(channel, user_name, DIFFICULTY_NORMAL)
+        return self._finish_with_scores(identity, channel, game)
 
     def _handle_next(
         self,
@@ -250,44 +442,29 @@ class AppService:
             raise ValueError("Нельзя перейти дальше без догадки в текущем раунде")
 
         if game.round_index >= game.rounds_per_session:
-            session_score = score_session(game.round_scores, alpha=self._alpha())
-            finished = GameSession(
-                round_index=game.round_index,
-                rounds_per_session=game.rounds_per_session,
-                round_data=None,
-                round_scores=game.round_scores,
-                last_z_result=game.last_z_result,
-                last_round_score=game.last_round_score,
-                session_score=session_score,
-            )
-            self.logger.log_event(
-                identity=identity,
-                event_name="game_finished",
-                channel=channel,
-                event_parameters={
-                    "n_correct": session_score.n_correct,
-                    "n_rounds": session_score.n_rounds,
-                    "accuracy": session_score.accuracy,
-                    "ci_low": session_score.ci_low,
-                    "ci_high": session_score.ci_high,
-                    "p_value": session_score.p_value,
-                    "significant": session_score.significant,
-                },
-            )
-            return on_summary(channel, finished)
+            return self._finish_with_scores(identity, channel, game)
 
+        session_cfg = resolve_game_cfg(self._game_cfg(), game.difficulty)
         next_index = game.round_index + 1
-        round_data = generate_round(self._game_cfg(), rng=self.rng)
+        round_data = generate_round(session_cfg, rng=self.rng)
         nxt = GameSession(
             round_index=next_index,
             rounds_per_session=game.rounds_per_session,
             round_data=round_data,
             round_scores=game.round_scores,
+            difficulty=game.difficulty,
+            user_name=game.user_name,
+            noise=float(session_cfg["noise"]),
         )
         self.logger.log_event(
             identity=identity,
             event_name="round_shown",
             channel=channel,
-            event_parameters=self._round_shown_params(next_index, round_data),
+            event_parameters=self._round_shown_params(
+                next_index,
+                round_data,
+                noise=nxt.noise,
+                difficulty=nxt.difficulty,
+            ),
         )
         return on_round(channel, nxt)

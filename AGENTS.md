@@ -68,18 +68,19 @@ testing:
 
 ## Сценарий UI
 
-Экраны: `START` → `ROUND` → `FEEDBACK` → … → `SUMMARY`.
+Экраны: `START` (имя) → `DIFFICULTY` → `ROUND` → `FEEDBACK` → … → `SUMMARY`.  
+Кнопка «Закончить игру» на ROUND/FEEDBACK. В итоге показывается имя и сложность.
 
 | Action | Смысл |
 |--------|--------|
-| `start_session` / `restart` | Новая сессия, раунд 1 |
-| `guess_effect` / `guess_no_effect` | Догадка → z-тест + балл → FEEDBACK |
+| `name_entered` | Сохранить имя → DIFFICULTY |
+| `difficulty_easy` / `normal` / `hard` | Старт сессии с пресетом |
+| `guess_effect` / `guess_no_effect` | Догадка → FEEDBACK |
 | `next_round` | Следующий раунд или SUMMARY |
+| `end_game` | Досрочный итог |
+| `restart` | Снова к DIFFICULTY (имя сохраняется) |
 
-`GameSession` живёт в `st.session_state` (AppService пересоздаётся на rerun).
-
-**События логов** (подробнее в README):  
-`start_screen_visit`, `button_*`, `session_start`, `round_shown` (noise/mean_a/mean_b/p_value), `guess_submitted` (+ `user_answer`), `game_finished`.
+`GameSession` живёт в `st.session_state`. События логов — см. README.
 
 ---
 
@@ -121,7 +122,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 43 passed
+./run_tests.sh              # слой 1: pytest → 47 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 

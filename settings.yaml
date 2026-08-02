@@ -15,20 +15,25 @@ app:
 game:
   # Базовая доля метрики (генеральная совокупность / ветка A)
   base_p: 0.1
-  # Относительный шум дневной истинной доли: p_day ~= base_p * (1 + N(0, noise)), клип в [0, 1]
+  # Дефолтные noise / effect_relative_range (= нормальный); пресеты ниже перекрывают.
   noise: 0.05
-  # Знаменатель (trials) на один день в каждой ветке
   n_per_day: 200
-  # Число дней (точек на графике)
   n_days: 14
-  # Вероятность, что у ветки B будет сдвиг p относительно базы
   effect_probability: 0.5
-  # Относительный диапазон сдвига: Uniform(-range, +range) * base_p
   effect_relative_range: 0.2
-  # Раундов в одной сессии
   rounds_per_session: 20
-  # Порог значимости z-теста
   alpha: 0.05
+  # Уровни сложности: noise и относительный сдвиг эффекта для ветки B.
+  difficulties:
+    easy:
+      noise: 0.02
+      effect_relative_range: 0.35
+    normal:
+      noise: 0.05
+      effect_relative_range: 0.20
+    hard:
+      noise: 0.15
+      effect_relative_range: 0.08
 
 # Публичный инвариант имени схемы. Host/port/user/password — в secrets.yaml.
 logging:

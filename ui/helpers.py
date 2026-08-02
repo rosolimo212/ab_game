@@ -18,6 +18,8 @@ def build_payload(
     *,
     game: GameSession | None = None,
     screen: str | None = None,
+    user_name: str | None = None,
+    text: str | None = None,
 ) -> dict[str, Any]:
     """Контекст шага для handle_action."""
     payload: dict[str, Any] = {}
@@ -25,6 +27,10 @@ def build_payload(
         payload["game"] = game
     if screen is not None:
         payload["screen"] = screen
+    if user_name:
+        payload["user_name"] = user_name
+    if text is not None:
+        payload["text"] = text
     return payload
 
 
@@ -35,6 +41,8 @@ def apply_response(state: dict[str, Any], response: AppResponse) -> None:
     state["buttons"] = list(response.buttons)
     state["finished"] = bool(response.finished)
     state["game"] = response.game
+    if response.user_name is not None:
+        state["user_name"] = response.user_name
 
 
 def store_identity(state: dict[str, Any], identity: UserIdentity) -> None:

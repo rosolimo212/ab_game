@@ -132,6 +132,21 @@ def _validate_game_section(game_cfg: dict[str, Any]) -> None:
     if not 0.0 < alpha < 1.0:
         raise ValueError(f"game.alpha должен быть в (0, 1), получено {alpha}")
 
+    difficulties = game_cfg.get("difficulties")
+    if not isinstance(difficulties, dict):
+        raise ValueError("В секции game обязателен словарь difficulties")
+    for level in ("easy", "normal", "hard"):
+        if level not in difficulties or not isinstance(difficulties[level], dict):
+            raise ValueError(f"game.difficulties должен содержать пресет {level!r}")
+        preset = difficulties[level]
+        for key in ("noise", "effect_relative_range"):
+            if key not in preset:
+                raise ValueError(f"game.difficulties.{level} нужен ключ {key!r}")
+            if float(preset[key]) < 0.0:
+                raise ValueError(
+                    f"game.difficulties.{level}.{key} не может быть отрицательным"
+                )
+
 
 def _validate_merged_config(cfg: dict[str, Any]) -> None:
     """Проверяет итоговый (settings ⊕ secrets) конфиг."""
