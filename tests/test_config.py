@@ -12,7 +12,14 @@ from core.config import load_app_config, read_yaml_config
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = ROOT / "settings.yaml"
-SECRETS_EXAMPLE = ROOT / "secrets.example.yaml"
+
+SECRETS_TEMPLATE = """\
+logging:
+  password: YOUR_PASSWORD_HERE
+
+testing:
+  password: YOUR_TESTER_PASSWORD_HERE
+"""
 
 
 def test_read_yaml_config_app_section() -> None:
@@ -30,11 +37,10 @@ def test_load_settings_without_secrets_when_logging_disabled() -> None:
     assert "password" not in config["logging"]
 
 
-def test_load_settings_plus_secrets_example(tmp_path: Path) -> None:
+def test_load_settings_plus_secrets(tmp_path: Path) -> None:
     secrets_path = tmp_path / "secrets.yaml"
-    secrets_path.write_text(SECRETS_EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    secrets_path.write_text(SECRETS_TEMPLATE, encoding="utf-8")
 
-    # Временно включаем logging, чтобы проверить требование password.
     settings_data = yaml.safe_load(SETTINGS.read_text(encoding="utf-8"))
     settings_data["app"]["logging_enabled"] = True
     settings_path = tmp_path / "settings.yaml"

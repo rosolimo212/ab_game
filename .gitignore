@@ -62,10 +62,11 @@ dmypy.json
 .ipynb_checkpoints
 
 # --- project-specific (ab_game) ---
-# Секреты — категорически не в git
-secrets.yaml
-# Устаревшее единое имя конфига (если осталось локально)
-config.yaml
+# Все yaml вне git, кроме публичных настроек.
+# secrets.yaml / secrets.example.yaml / config.yaml — не коммитить.
+*.yaml
+!settings.yaml
+
 *.csv
 *.png
 *.jpg

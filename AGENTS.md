@@ -1,127 +1,145 @@
-# AGENTS.md — контекст для AI-агентов и разработчиков
+# AGENTS.md — полный контекст для новой сессии Cursor
 
-Краткая выжимка по проекту **ab_game**. Читать перед правками кода.  
-Источники: `task.md` (исходное ТЗ), этот файл и `README.md` (актуальные решения).  
-Репозиторий: `/home/roman/python/kotelok/ab_game`.  
-Workspace: работать **здесь**, **без** `move_agent_to_root`.
+Читать **в первую очередь** при открытии проекта `/home/roman/python/kotelok/ab_game`.  
+Дополнения: [`README.md`](README.md) (статус/запуск), [`task.md`](task.md) (исходное ТЗ).
 
-**Процесс:** после каждого промежуточного этапа обновлять `README.md` и `AGENTS.md`.  
-**Коммиты / push** — только по явной просьбе пользователя.
+**Workspace:** корень = эта папка. Не вызывать `move_agent_to_root`.  
+**Процесс:** после каждого этапа обновлять `README.md` и этот файл.  
+**Коммиты / push** — только по явной просьбе.
+
+---
 
 ## Что это
 
-Браузерная мини-игра: пользователь «на глаз» оценивает по графику двух временных рядов, есть ли значимый эффект в A/B-тесте, затем сразу сравнивает догадку с z-тестом. За верные ответы — баллы; в конце сессии — доля верных (+ CI и p-value как мета-ирония).
+Мини-игра в браузере (Streamlit): по графику A/B угадать, есть ли значимый эффект → сразу сверить с **z-тестом**. Баллы за согласие с тестом; в конце сессии — доля верных + CI + p-value (мета-ирония).
 
-Стек MVP: **Python**, **Streamlit**, **Plotly**, логирование в **PostgreSQL**, настройки в **YAML**.
+Стек: Python · Streamlit · Plotly · PostgreSQL · YAML.
 
-## Откуда наследовать
+Наследовать принципы и каркас из `/home/roman/python/kotelok/template`; UI/logging-паттерны — из `/home/roman/python/wvs_bot` (без копирования WVS-логики).
 
-| Источник | Что брать |
-|----------|-----------|
-| `/home/roman/python/kotelok/template` | Принципы, каркас `core/` + `ui/`, yaml, postgres logging (noop/factory), identity, messages JSON, двухслойные тесты, `pre_commit_check.sh` |
-| `/home/roman/python/wvs_bot` | Паттерны Streamlit, cookies/`external_user_id`, Plotly в UI, схема логов в БД `communication` |
+---
 
-Не копировать телеграм/опросы/аналитику WVS. Каркас — новый репозиторий, нужные куски из template переносятся вручную.
+## Принципы
 
-## Принципы (обязательные)
+1. Максимальная инкапсуляция (UI / ядро / stats / генератор / логи сменяемы).
+2. Предельная простота; комментарии **на русском**.
+3. UI без бизнес-логики; домен без I/O.
+4. Тексты пользователя → `data/dialog_messages.json` (когда появится UI).
+5. Избыточные тесты: pytest + позже `business_checks.py`.
+6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore` (в т.ч. `secrets.yaml`).
+7. Коммиты только по просьбе.
 
-1. Максимальная инкапсуляция.
-2. Предельная простота.
-3. Документируем всё (комментарии на русском).
-4. Гибкие зависимости.
-5. Избыточное тестирование (pytest + `business_checks.py`).
-6. UI без бизнес-логики.
-7. Доменная логика без I/O.
-8. Тексты в `data/dialog_messages.json`.
-9. **Два конфига:** `settings.yaml` в git; `secrets.yaml` категорически не в git (только `secrets.example.yaml` как шаблон).
-10. Коммиты / push — только по просьбе.
+---
 
-## Зафиксированные решения MVP
+## Конфиг (важно)
 
-### Правильный ответ (scoring раунда)
+| Файл | Git | Назначение |
+|------|-----|------------|
+| `settings.yaml` | **да** (единственный yaml в репо) | `app`, `game`, публичный `logging`/`testing` |
+| `secrets.yaml` | **нет** | пароли, токены |
 
-Сравниваем догадку с вердиктом z-теста (`alpha = 0.05`):
+`.gitignore`: `*.yaml` + `!settings.yaml`.
 
-| Догадка | Условие | Итог |
-|---------|---------|------|
-| «эффект есть» | `p_value < 0.05` | +1 |
-| «эффекта нет» | `p_value >= 0.05` | +1 |
-| иначе | — | 0 |
+Создать секреты локально:
 
-`has_effect` генератора **не** критерий баллов.
+```yaml
+# secrets.yaml  (не коммитить)
+logging:
+  password: "..."
+testing:
+  password: "..."
+# telegram:
+#   token: "..."
+```
 
-### Генерация рядов (`core/generator.py`) — реализовано
+`load_app_config("settings.yaml", "secrets.yaml")` — deep-merge.  
+При `logging_enabled: false` файл secrets можно не создавать.
 
-- `base_p` + дневной относительный `noise`: `p_day = clip(true_p * (1 + N(0, noise)), 0, 1)`, затем `Binomial(n_per_day, p_day)`.
-- С вероятностью `effect_probability` (дефолт 0.5) ветка B: `p_B = clip(base_p * (1 + U(-range, +range)), 0, 1)`, `range=effect_relative_range` (дефолт 0.2).
-- Иначе `p_B = base_p`.
-- Дефолт: 14 дней, параметры в секции `game` конфига.
+---
 
-### Стат-тест (`core/stats.py`) — реализовано
+## Зафиксированные правила игры (MVP)
 
-- Двухсторонний **z-тест двух пропорций** (pooled SE) по сумме числителей/знаменателей за период.
-- `alpha` из конфига (дефолт 0.05).
-- Вырождение (se=0 или trials=0) → `p_value=1.0`, `significant=False`.
+**Баллы раунда** (не `has_effect` генератора!):
 
-### UX / инфра (ещё не в коде)
+| Догадка | Условие z-теста | Балл |
+|---------|-----------------|------|
+| эффект есть | `p_value < 0.05` | 1 |
+| эффекта нет | `p_value >= 0.05` | 1 |
+| иначе | | 0 |
 
-- 20 раундов; фидбек сразу; итог = доля верных + CI + p-value.
-- График Plotly: дневная метрика; hover: rate, num, den.
-- Postgres: БД `communication`, схема `ab_game`.
-- UI: Streamlit.
+**Генератор** (`core/generator.py`): биномиальная доля [0,1]; 2 ветки; с вероятностью 0.5 сдвиг B: `base_p * (1 + U(-0.2,+0.2))`; иначе тот же `p`; дневной `noise`; дефолт 14 дней; `n_per_day` из settings.
 
-## Структура репозитория (сейчас)
+**Стат-тест** (`core/stats.py`): pooled z-тест двух пропорций по сумме дней; `alpha=0.05`.
+
+**UX (ещё не в коде):** 20 раундов; фидбек сразу; итог = доля верных + CI + p-value; Plotly — метрика за день, hover: rate/числитель/знаменатель.
+
+**Postgres:** БД `communication`, схема `ab_game`.
+
+---
+
+## Структура сейчас
 
 ```
-core/
-  config.py      # settings.yaml ⊕ secrets.yaml
-  models.py      # DayPoint, BranchSeries, RoundData, ZTestResult
-  generator.py   # generate_round
-  stats.py       # two_proportion_z_test, z_test_round
-ui/              # заглушка
-data/            # placeholder
-sql/             # placeholder
-tests/           # test_config, test_generator, test_stats
-settings.yaml           # в git
-secrets.example.yaml    # в git (шаблон)
-secrets.yaml            # НЕ в git
+core/config.py models.py generator.py stats.py
+ui/                 # заглушка
+data/ sql/          # placeholder
+tests/
+  test_config.py
+  test_generator.py
+  test_stats.py
+settings.yaml       # в git
+run_tests.sh        # ./run_tests.sh
 requirements.txt
 requirements-dev.txt
 ```
 
-## Логирование (postgres) — план
+---
 
-- Схема `ab_game`, таблицы `users` / `events`.
-- `logging_enabled: false` → noop.
-- `user_id` = sha256(`channel:external_user_id`).
+## Как запускать тесты
 
-## Тесты
+Тесты лежат в `tests/`. Запуск из корня проекта:
 
 ```bash
-cd /home/roman/python/kotelok/ab_game
-source .venv/bin/activate   # или .venv/bin/pytest
-pytest tests/ -q
+./run_tests.sh
+# или:
+.venv/bin/pytest tests/ -q
 ```
 
-На этапе 1–3 (+ split конфигов): **14 passed**.  
-Для прогона ядра достаточно `numpy`, `PyYAML`, `pytest`.
+Первая установка:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+# минимум для ядра: numpy PyYAML pytest
+./run_tests.sh
+```
+
+Ожидаемо: **14 passed** (config, generator, stats).
+
+---
 
 ## Статус этапов
 
 | # | Этап | Состояние |
 |---|------|-----------|
-| 1 | Каркас + `settings.yaml` / `secrets` | **готово** |
-| 2 | Генератор биномиальных рядов | **готово** |
-| 3 | Z-тест пропорций | **готово** |
+| 1 | Каркас + settings/secrets split | **готово** |
+| 2 | Генератор | **готово** |
+| 3 | Z-тест | **готово** |
 | 4 | Scoring раунда/сессии | не начат |
-| 5 | Plotly-график | не начат |
+| 5 | Plotly | не начат |
 | 6 | AppService + Streamlit | не начат |
 | 7 | Postgres logging | не начат |
 | 8 | business_checks + pre_commit | не начат |
 
-## Куда смотреть
+Следующий по плану: **4. Scoring**.
 
-- Требования: [`task.md`](task.md)
-- Статус: [`README.md`](README.md)
-- Шаблон: `/home/roman/python/kotelok/template`
-- Эталон UI/логов: `/home/roman/python/wvs_bot`
+---
+
+## Локальные незакоммиченные правки (на момент записи)
+
+- `.gitignore`: `*.yaml` / `!settings.yaml`
+- удалён из индекса/диска `secrets.example.yaml` (шаблон перенесён в этот файл и README)
+- добавлен `run_tests.sh`
+- обновлены тесты конфига без файла-примера секретов
+
+Если `git status` показывает эти изменения — закоммитить **только по просьбе пользователя**.

@@ -6,8 +6,8 @@
     Собрать единый dict конфигурации без хранения паролей/токенов в git.
 
 Файлы:
-    settings.yaml  — публичные параметры (в git).
-    secrets.yaml   — креды (НЕ в git); шаблон — secrets.example.yaml.
+    settings.yaml  — публичные параметры (единственный yaml в git).
+    secrets.yaml   — креды (НЕ в git; создаётся локально по образцу из AGENTS.md / README).
 
 Вход:
     Пути к settings и secrets (secrets можно не требовать, если logging_enabled=false).
@@ -16,7 +16,7 @@
     dict с ключами app, game, logging; опционально testing, telegram.
 
 Риски:
-    Случайный коммит secrets.yaml блокируется .gitignore — не отключать правило.
+    Все *.yaml кроме settings.yaml игнорируются git — не ослаблять .gitignore.
 """
 
 from __future__ import annotations
@@ -167,7 +167,7 @@ def _validate_merged_config(cfg: dict[str, Any]) -> None:
     if logging_enabled and not logging_cfg.get("password"):
         raise ValueError(
             "При logging_enabled=true нужен logging.password в secrets.yaml "
-            "(см. secrets.example.yaml)"
+            "(формат — в AGENTS.md / README.md)"
         )
 
     if interface == "telegram":
@@ -210,7 +210,7 @@ def load_app_config(
         elif logging_enabled:
             raise FileNotFoundError(
                 f"Файл {secrets_path!r} не найден. "
-                "Скопируйте secrets.example.yaml в secrets.yaml и заполните пароли."
+                "Создайте secrets.yaml с паролями (образец в AGENTS.md / README.md)."
             )
 
     _validate_merged_config(merged)
