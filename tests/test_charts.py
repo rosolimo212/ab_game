@@ -57,6 +57,10 @@ def test_build_ab_chart_two_traces() -> None:
     assert fig.layout.xaxis.showgrid is False
     annotations = list(fig.layout.annotations or ())
     assert any("Kotelok" in str(getattr(a, "text", "")) for a in annotations)
+    images = list(fig.layout.images or ())
+    assert len(images) == 2  # белая рамка + эмблема
+    assert float(images[0].sizex) > float(images[1].sizex)
+    assert float(images[0].sizey) > float(images[1].sizey)
 
 
 def test_build_ab_chart_hover_has_counts() -> None:

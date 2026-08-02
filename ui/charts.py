@@ -28,6 +28,61 @@ if str(_STYLE_DIR) not in sys.path:
 
 from kotelok_plotly import apply, color  # noqa: E402
 
+# 1×1 белый PNG — подложка-рамка под чёрный логотип (тёмная тема Streamlit).
+_WHITE_PIXEL_URI = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC"
+)
+
+
+def _add_logo_white_frame(fig: go.Figure, *, pad_ratio: float = 0.18) -> None:
+    """
+    Белая «плашка» чуть больше эмблемы Kotelok — иначе на тёмном фоне не видно.
+
+    Рисуется layout.image под логотипом (тот же paper-якорь).
+    """
+    images = list(fig.layout.images or ())
+    if not images:
+        return
+    logo = images[0]
+    sx = float(logo.sizex or 0.0)
+    sy = float(logo.sizey or 0.0)
+    if sx <= 0.0 or sy <= 0.0:
+        return
+    pad_x = sx * pad_ratio
+    pad_y = sy * pad_ratio
+    # Нельзя передавать тот же layout.Image обратно в update_layout —
+    # Plotly схлопывает список. Копируем свойства в dict.
+    logo_dict: dict[str, Any] = {
+        "source": logo.source,
+        "xref": logo.xref,
+        "yref": logo.yref,
+        "x": float(logo.x),
+        "xanchor": logo.xanchor or "right",
+        "y": float(logo.y),
+        "yanchor": logo.yanchor or "top",
+        "sizex": sx,
+        "sizey": sy,
+        "sizing": logo.sizing or "contain",
+        "layer": "above",
+    }
+    # xanchor=right при x≈1: рост sizex уходит влево; сдвиг x вправо
+    # даёт поля с обеих сторон (в т.ч. у края фигуры).
+    frame: dict[str, Any] = {
+        "source": _WHITE_PIXEL_URI,
+        "xref": logo.xref,
+        "yref": logo.yref,
+        "x": float(logo.x) + pad_x,
+        "xanchor": logo.xanchor or "right",
+        "y": float(logo.y) + pad_y,
+        "yanchor": logo.yanchor or "top",
+        "sizex": sx + 2.0 * pad_x,
+        "sizey": sy + 2.0 * pad_y,
+        "sizing": "stretch",
+        "layer": "above",
+    }
+    fig.layout.images = (frame, logo_dict)
+
 
 def _branch_trace(
     branch: BranchSeries,
@@ -112,6 +167,7 @@ def build_ab_chart(
     # Как в style/stl.ipynb: apply на готовую фигуру (без фиксации width —
     # Streamlit тянет use_container_width).
     apply(fig)
+    _add_logo_white_frame(fig)
 
     # kotelok.apply всегда кладёт layout.title без text → Plotly JS рисует
     # «undefined». Если заголовка нет — явно пустая строка; иначе оставляем
