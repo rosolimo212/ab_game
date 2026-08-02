@@ -27,6 +27,12 @@ def test_buttons_exist() -> None:
     assert button("restart")
 
 
+def test_privacy_notice_exists() -> None:
+    clear_messages_cache()
+    text = message("privacy_notice", "streamlit")
+    assert "персональн" in text.lower()
+
+
 def test_apply_response_stores_game_and_name() -> None:
     state: dict = {}
     game = GameSession(round_index=1, rounds_per_session=20, user_name="Роман")
