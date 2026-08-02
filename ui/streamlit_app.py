@@ -155,18 +155,22 @@ def run_streamlit(config: dict[str, Any]) -> None:
         _end_game_button(service, state)
 
     elif screen == Screen.FEEDBACK.value:
-        # Метрики под графиком — иначе боковая колонка меняет пропорции Plotly.
+        # Метрики под кнопками — иначе длинный блок сдвигает «Далее».
         if game is not None and game.round_data is not None:
             fig = build_ab_chart(game.round_data, title=None)
             st.plotly_chart(fig, use_container_width=True)
-            if game.last_z_result is not None:
-                st.markdown(
-                    format_feedback_stats(game.round_data, game.last_z_result)
-                )
         if st.button(button("next_round", "streamlit"), key="btn_next"):
             _dispatch(service, state, ACTION_NEXT_ROUND)
             st.rerun()
         _end_game_button(service, state)
+        if (
+            game is not None
+            and game.round_data is not None
+            and game.last_z_result is not None
+        ):
+            st.markdown(
+                format_feedback_stats(game.round_data, game.last_z_result)
+            )
 
     elif screen == Screen.SUMMARY.value:
         if game is not None and game.round_history:

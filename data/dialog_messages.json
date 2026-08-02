@@ -41,7 +41,7 @@
       "id": 5,
       "name": "feedback",
       "when": "Экран FEEDBACK (основной текст).",
-      "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\n\nБалл за раунд: {points}.\n\nПод графиком — целевые и фактические средние.",
+      "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\n\nБалл за раунд: {points}.\n\nНиже — целевые и фактические средние.",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -85,7 +85,7 @@
     {
       "id": 10,
       "name": "feedback_stats",
-      "when": "Метрики раунда под графиком на FEEDBACK.",
+      "when": "Метрики раунда под кнопками на FEEDBACK.",
       "default": "**Метрики раунда**\n\n**A** — целевое: {target_a}, фактическое: {actual_a}\n\n**B** — целевое: {target_b}, фактическое: {actual_b}\n\n**Разница (факт.)**: {diff_line}\n\n**p-value (z-тест)**: {p_value}",
       "console": "",
       "telegram": "",
