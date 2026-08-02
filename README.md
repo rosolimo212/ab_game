@@ -41,7 +41,7 @@ streamlit run ui/streamlit_app.py
 ./pre_commit_check.sh
 ```
 
-Ожидается: **50 passed** (pytest) и **15 OK** (business_checks).
+Ожидается: **55 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 
@@ -97,9 +97,16 @@ testing:
 | `button_next_round` | Клик «Далее» | `action` |
 | `button_end_game` | Клик «Закончить игру» | `action` |
 | `game_finished` | Итог (полный или досрочный) | `n_correct`, `n_rounds`, `accuracy`, CI, `p_value`, `difficulty`, `user_name`, `early_exit` |
+| `button_export_csv` | Клик экспорта CSV | `action` |
+| `csv_exported` | Сырые данные выгружены | `n_rounds`, `n_rows`, `difficulty`, `user_name` |
 | `button_restart` | «Играть снова» | `action` |
 
-Сложность: **лёгкий** (большая разница, низкий шум) / **нормальный** / **тяжёлый** (малая разница, высокий шум) — пресеты в `settings.yaml` → `game.difficulties`.
+CSV: колонки `round,branch,date,value` (date = день раунда, value = доля).  
+`app.debug_mode: true` — на экране expander с именами событий и параметрами.
+
+Сложность: **лёгкий** / **нормальный** / **тяжёлый**.  
+`base_p` каждого раунда — Uniform(`base_p_min`, `base_p_max`).  
+На hard `effect_probability=0.5` и достаточный `effect_relative_range`, чтобы z-тест не уходил в «вечный null».
 
 ## Уже в коде
 

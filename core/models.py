@@ -36,6 +36,7 @@ ACTION_GUESS_EFFECT = "guess_effect"
 ACTION_GUESS_NO_EFFECT = "guess_no_effect"
 ACTION_NEXT_ROUND = "next_round"
 ACTION_END_GAME = "end_game"
+ACTION_EXPORT_CSV = "export_csv"
 ACTION_RESTART = "restart"
 
 # Совместимость: старый start_session = выбор нормальной сложности.
@@ -202,6 +203,8 @@ class GameSession:
     user_name: str = ""
     # Рабочий noise для текущей сложности (для логов / UI).
     noise: float = 0.05
+    # Все показанные раунды сессии (для CSV-экспорта).
+    round_history: tuple[RoundData, ...] = ()
 
 
 @dataclass

@@ -30,6 +30,8 @@ import yaml
 ALLOWED_INTERFACES = ("streamlit", "telegram", "console")
 REQUIRED_GAME_KEYS = (
     "base_p",
+    "base_p_min",
+    "base_p_max",
     "noise",
     "n_per_day",
     "n_days",
@@ -97,6 +99,14 @@ def _validate_game_section(game_cfg: dict[str, Any]) -> None:
     if not 0.0 < base_p < 1.0:
         raise ValueError(f"game.base_p должен быть в (0, 1), получено {base_p}")
 
+    base_p_min = float(game_cfg["base_p_min"])
+    base_p_max = float(game_cfg["base_p_max"])
+    if not 0.0 < base_p_min <= base_p_max < 1.0:
+        raise ValueError(
+            f"game.base_p_min/max должны быть в (0, 1) и min<=max, "
+            f"получено [{base_p_min}, {base_p_max}]"
+        )
+
     noise = float(game_cfg["noise"])
     if noise < 0.0:
         raise ValueError(f"game.noise не может быть отрицательным, получено {noise}")
@@ -146,6 +156,12 @@ def _validate_game_section(game_cfg: dict[str, Any]) -> None:
                 raise ValueError(
                     f"game.difficulties.{level}.{key} не может быть отрицательным"
                 )
+        if "effect_probability" in preset:
+            ep = float(preset["effect_probability"])
+            if not 0.0 <= ep <= 1.0:
+                raise ValueError(
+                    f"game.difficulties.{level}.effect_probability в [0, 1], получено {ep}"
+                )
 
 
 def _validate_merged_config(cfg: dict[str, Any]) -> None:
@@ -169,6 +185,10 @@ def _validate_merged_config(cfg: dict[str, Any]) -> None:
 
     if "logging_enabled" not in app_cfg:
         raise ValueError("В секции app обязателен ключ logging_enabled")
+
+    # debug_mode опционален: отсутствие = false
+    if "debug_mode" in app_cfg and not isinstance(app_cfg["debug_mode"], (bool, int)):
+        raise ValueError("app.debug_mode должен быть bool")
 
     _validate_game_section(game_cfg)
 

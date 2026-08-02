@@ -139,7 +139,7 @@ def on_summary(channel: str, game: GameSession) -> AppResponse:
             session_p=fmt_p_value(session.p_value),
             session_verdict=session_verdict,
         ),
-        buttons=[button("restart", channel)],
+        buttons=[button("export_csv", channel), button("restart", channel)],
         screen=Screen.SUMMARY,
         finished=True,
         game=game,

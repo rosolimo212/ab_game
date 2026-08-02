@@ -274,6 +274,7 @@ def check_dialog_messages_and_buttons() -> None:
         "guess_no_effect",
         "next_round",
         "end_game",
+        "export_csv",
         "restart",
     ):
         if not button(name, "streamlit").strip():

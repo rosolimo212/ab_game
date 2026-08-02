@@ -234,6 +234,33 @@ def test_end_game_early() -> None:
     assert summary.game is not None
     assert summary.game.session_score is not None
     assert summary.game.session_score.n_rounds == 1
+    assert len(summary.game.round_history) == 1
+
+
+def test_export_csv_logs_event() -> None:
+    from core.models import ACTION_EXPORT_CSV
+
+    service, logger = _make_service(rounds=1)
+    identity, round1 = _begin_round(service, logger, "streamlit", external_id="ext-csv")
+    fb = service.handle_action(
+        identity, "streamlit", ACTION_GUESS_EFFECT, {"game": round1.game}
+    )
+    summary = service.handle_action(
+        identity, "streamlit", ACTION_NEXT_ROUND, {"game": fb.game}
+    )
+    again = service.handle_action(
+        identity,
+        "streamlit",
+        ACTION_EXPORT_CSV,
+        {"game": summary.game, "user_name": "Тестер"},
+    )
+    assert again.screen == Screen.SUMMARY
+    names = [e["event_name"] for e in logger.events]
+    assert "button_export_csv" in names
+    assert "csv_exported" in names
+    csv_ev = [e for e in logger.events if e["event_name"] == "csv_exported"][-1]
+    assert csv_ev["event_parameters"]["n_rounds"] == 1
+    assert csv_ev["event_parameters"]["n_rows"] == 1 * 2 * 14
 
 
 def test_restart_keeps_name_goes_to_difficulty() -> None:

@@ -4,7 +4,8 @@
 
 лёгкий — большая разница метрик, низкий шум;
 нормальный — базовые параметры из game;
-тяжёлый — малая разница, высокий шум.
+тяжёлый — малая разница на глаз, высокий шум (но эффект всё ещё ~50/50 и
+  достаточно крупный, чтобы z-тест не уходил в «вечный null»).
 """
 
 from __future__ import annotations
@@ -23,6 +24,9 @@ DIFFICULTY_LABELS = {
 
 DIFFICULTY_KEYS = (DIFFICULTY_EASY, DIFFICULTY_NORMAL, DIFFICULTY_HARD)
 
+# Ключи пресета, которые перекрывают game.*.
+_PRESET_KEYS = ("noise", "effect_relative_range", "effect_probability")
+
 
 def resolve_game_cfg(
     game_cfg: Mapping[str, Any],
@@ -31,7 +35,7 @@ def resolve_game_cfg(
     """
     Собирает параметры генератора для выбранной сложности.
 
-    Берёт game.* и перекрывает noise / effect_relative_range из game.difficulties.
+    Берёт game.* и перекрывает ключи из game.difficulties[level].
     """
     if difficulty not in DIFFICULTY_KEYS:
         raise ValueError(f"Неизвестная сложность: {difficulty!r}")
@@ -48,7 +52,10 @@ def resolve_game_cfg(
     for key in ("noise", "effect_relative_range"):
         if key not in preset:
             raise ValueError(f"В пресете {difficulty!r} нужен ключ {key!r}")
-        merged[key] = preset[key]
+
+    for key in _PRESET_KEYS:
+        if key in preset:
+            merged[key] = preset[key]
 
     merged["difficulty"] = difficulty
     return merged

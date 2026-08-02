@@ -8,6 +8,7 @@
 
 Правила MVP:
     - Метрика ∈ [0, 1], биномиальная доля.
+    - base_p раунда: Uniform(base_p_min, base_p_max), иначе фиксированный base_p.
     - С вероятностью effect_probability ветка B получает сдвиг p:
       Uniform(-effect_relative_range, +effect_relative_range) * base_p.
     - Иначе p_B = p_A = base_p.
@@ -36,6 +37,21 @@ from core.models import BranchSeries, DayPoint, RoundData
 def _clip_probability(value: float) -> float:
     """Ограничивает вероятность отрезком [0, 1]."""
     return float(np.clip(value, 0.0, 1.0))
+
+
+def _sample_base_p(game_cfg: Mapping[str, Any], rng: np.random.Generator) -> float:
+    """
+    Базовая доля раунда: разброс [base_p_min, base_p_max] или фиксированный base_p.
+    """
+    if "base_p_min" in game_cfg and "base_p_max" in game_cfg:
+        lo = float(game_cfg["base_p_min"])
+        hi = float(game_cfg["base_p_max"])
+        if not 0.0 < lo <= hi < 1.0:
+            raise ValueError(
+                f"base_p_min/max должны быть в (0, 1) и min<=max, получено [{lo}, {hi}]"
+            )
+        return float(rng.uniform(lo, hi))
+    return float(game_cfg["base_p"])
 
 
 def _resolve_branch_b_p(
@@ -94,14 +110,14 @@ def generate_round(
     """
     Генерирует один раунд A/B по секции game конфига.
 
-    :param game_cfg: словарь параметров (как config['game'])
+    :param game_cfg: словарь параметров (как config['game'] после resolve_game_cfg)
     :param rng: генератор случайных чисел; если None — создаётся новый
     :return: RoundData
     """
     if rng is None:
         rng = np.random.default_rng()
 
-    base_p = float(game_cfg["base_p"])
+    base_p = _sample_base_p(game_cfg, rng)
     noise = float(game_cfg["noise"])
     n_per_day = int(game_cfg["n_per_day"])
     n_days = int(game_cfg["n_days"])

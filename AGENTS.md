@@ -71,7 +71,11 @@ testing:
 ## Сценарий UI
 
 Экраны: `START` (имя) → `DIFFICULTY` → `ROUND` → `FEEDBACK` → … → `SUMMARY`.  
-Кнопка «Закончить игру» на ROUND/FEEDBACK. В итоге показывается имя и сложность.
+Кнопка «Закончить игру» на ROUND/FEEDBACK. SUMMARY: имя, сложность, **Экспорт CSV**, «Играть снова».
+
+`app.debug_mode` — показывать события логов на экране (`TeeEventLogger` + expander).
+
+`base_p` раунда ∈ [`base_p_min`, `base_p_max`]; hard не должен давать «эффекта нет» почти всегда (см. `game.difficulties.hard`).
 
 | Action | Смысл |
 |--------|--------|
@@ -80,6 +84,7 @@ testing:
 | `guess_effect` / `guess_no_effect` | Догадка → FEEDBACK |
 | `next_round` | Следующий раунд или SUMMARY |
 | `end_game` | Досрочный итог |
+| `export_csv` | Экспорт сырых данных сессии (лог) |
 | `restart` | Снова к DIFFICULTY (имя сохраняется) |
 
 `GameSession` живёт в `st.session_state`. События логов — см. README.
@@ -124,7 +129,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 50 passed
+./run_tests.sh              # слой 1: pytest → 55 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 

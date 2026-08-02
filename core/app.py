@@ -10,6 +10,7 @@ AppService — оркестратор игрового сценария.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 
@@ -30,6 +31,7 @@ from core.difficulty import (
     DIFFICULTY_NORMAL,
     resolve_game_cfg,
 )
+from core.export_csv import session_rounds_to_csv_rows
 from core.generator import generate_round
 from core.logging.base import EventLogger
 from core.models import (
@@ -37,6 +39,7 @@ from core.models import (
     ACTION_DIFFICULTY_HARD,
     ACTION_DIFFICULTY_NORMAL,
     ACTION_END_GAME,
+    ACTION_EXPORT_CSV,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
     ACTION_NAME_ENTERED,
@@ -62,6 +65,7 @@ BUTTON_CLICK_EVENTS = {
     ACTION_GUESS_NO_EFFECT: "button_guess_no_effect",
     ACTION_NEXT_ROUND: "button_next_round",
     ACTION_END_GAME: "button_end_game",
+    ACTION_EXPORT_CSV: "button_export_csv",
     ACTION_RESTART: "button_restart",
 }
 
@@ -204,6 +208,10 @@ class AppService:
             self._touch_user(identity, channel, payload)
             return self._end_game(identity, channel, payload)
 
+        if action == ACTION_EXPORT_CSV:
+            self._touch_user(identity, channel, payload)
+            return self._export_csv(identity, channel, payload)
+
         if action == ACTION_RESTART:
             self._touch_user(identity, channel, payload)
             user_name = str(payload.get("user_name") or "").strip()
@@ -310,6 +318,7 @@ class AppService:
             difficulty=difficulty,
             user_name=user_name,
             noise=noise,
+            round_history=(round_data,),
         )
         self.logger.log_event(
             identity=identity,
@@ -353,17 +362,12 @@ class AppService:
         z_result = z_test_round(game.round_data, alpha=self._alpha())
         round_score = score_round(guess_has_effect, z_result)
         user_answer = "effect" if guess_has_effect else "no_effect"
-        updated = GameSession(
-            round_index=game.round_index,
-            rounds_per_session=game.rounds_per_session,
-            round_data=game.round_data,
+        updated = replace(
+            game,
             round_scores=game.round_scores + (round_score,),
             last_z_result=z_result,
             last_round_score=round_score,
             session_score=None,
-            difficulty=game.difficulty,
-            user_name=game.user_name,
-            noise=game.noise,
         )
         self.logger.log_event(
             identity=identity,
@@ -403,17 +407,10 @@ class AppService:
             return on_summary_empty(channel, game.user_name, game.difficulty)
 
         session_score = score_session(game.round_scores, alpha=self._alpha())
-        finished = GameSession(
-            round_index=game.round_index,
-            rounds_per_session=game.rounds_per_session,
+        finished = replace(
+            game,
             round_data=None,
-            round_scores=game.round_scores,
-            last_z_result=game.last_z_result,
-            last_round_score=game.last_round_score,
             session_score=session_score,
-            difficulty=game.difficulty,
-            user_name=game.user_name,
-            noise=game.noise,
         )
         self.logger.log_event(
             identity=identity,
@@ -430,6 +427,7 @@ class AppService:
                 "difficulty": finished.difficulty,
                 "user_name": finished.user_name,
                 "early_exit": len(game.round_scores) < game.rounds_per_session,
+                "history_rounds": len(finished.round_history),
             },
         )
         return on_summary(channel, finished)
@@ -445,6 +443,30 @@ class AppService:
             user_name = str(payload.get("user_name") or "").strip()
             return on_summary_empty(channel, user_name, DIFFICULTY_NORMAL)
         return self._finish_with_scores(identity, channel, game)
+
+    def _export_csv(
+        self,
+        identity: UserIdentity,
+        channel: str,
+        payload: dict[str, Any],
+    ) -> AppResponse:
+        """Логирует экспорт CSV; экран SUMMARY не меняется."""
+        game = self._require_game(payload)
+        rows = session_rounds_to_csv_rows(game.round_history)
+        self.logger.log_event(
+            identity=identity,
+            event_name="csv_exported",
+            channel=channel,
+            event_parameters={
+                "n_rounds": len(game.round_history),
+                "n_rows": len(rows),
+                "difficulty": game.difficulty,
+                "user_name": game.user_name,
+            },
+        )
+        if game.session_score is not None:
+            return on_summary(channel, game)
+        return on_summary_empty(channel, game.user_name, game.difficulty)
 
     def _handle_next(
         self,
@@ -462,14 +484,15 @@ class AppService:
         session_cfg = resolve_game_cfg(self._game_cfg(), game.difficulty)
         next_index = game.round_index + 1
         round_data = generate_round(session_cfg, rng=self.rng)
-        nxt = GameSession(
+        nxt = replace(
+            game,
             round_index=next_index,
-            rounds_per_session=game.rounds_per_session,
             round_data=round_data,
-            round_scores=game.round_scores,
-            difficulty=game.difficulty,
-            user_name=game.user_name,
+            last_z_result=None,
+            last_round_score=None,
+            session_score=None,
             noise=float(session_cfg["noise"]),
+            round_history=game.round_history + (round_data,),
         )
         self.logger.log_event(
             identity=identity,

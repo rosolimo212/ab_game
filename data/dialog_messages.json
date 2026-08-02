@@ -216,6 +216,15 @@
       "console": "",
       "telegram": "",
       "browser": ""
+    },
+    {
+      "id": 25,
+      "name": "debug_panel_title",
+      "when": "Заголовок expander при app.debug_mode.",
+      "default": "Отладка: события логирования",
+      "console": "",
+      "telegram": "",
+      "browser": ""
     }
   ],
   "buttons": [
@@ -293,6 +302,15 @@
     },
     {
       "id": 9,
+      "name": "export_csv",
+      "when": "SUMMARY: скачать сырые данные раундов",
+      "default": "Экспорт CSV",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 10,
       "name": "restart",
       "when": "SUMMARY → снова",
       "default": "Играть снова",

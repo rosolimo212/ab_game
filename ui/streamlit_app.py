@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -11,12 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.export_csv import session_rounds_to_csv_bytes
 from core.messages import button, message
 from core.models import (
     ACTION_DIFFICULTY_EASY,
     ACTION_DIFFICULTY_HARD,
     ACTION_DIFFICULTY_NORMAL,
     ACTION_END_GAME,
+    ACTION_EXPORT_CSV,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
     ACTION_NAME_ENTERED,
@@ -64,6 +67,24 @@ def _end_game_button(service: Any, state: Any) -> None:
         st.rerun()
 
 
+def _render_debug_panel(state: Any) -> None:
+    """Панель debug_mode: последние события логирования."""
+    import streamlit as st
+
+    events = list(state.get("debug_events") or [])
+    if not events:
+        return
+    with st.expander(message("debug_panel_title", "streamlit"), expanded=False):
+        # Показываем хвост, чтобы экран не раздувался.
+        for item in events[-40:]:
+            params = item.get("event_parameters")
+            params_txt = json.dumps(params, ensure_ascii=False) if params else "—"
+            st.markdown(
+                f"**`{item.get('event_name')}`** · `{item.get('channel')}`\n\n"
+                f"`{params_txt}`"
+            )
+
+
 def run_streamlit(config: dict[str, Any]) -> None:
     import streamlit as st
 
@@ -72,8 +93,13 @@ def run_streamlit(config: dict[str, Any]) -> None:
         page_icon="📊",
     )
 
-    service = build_app_service(config)
+    debug_mode = bool(config.get("app", {}).get("debug_mode", False))
     state = st.session_state
+    if debug_mode:
+        state.setdefault("debug_events", [])
+        service = build_app_service(config, event_sink=state["debug_events"])
+    else:
+        service = build_app_service(config)
 
     if not state.get("initialized"):
         _init_session(service, state)
@@ -148,9 +174,23 @@ def run_streamlit(config: dict[str, Any]) -> None:
         _end_game_button(service, state)
 
     elif screen == Screen.SUMMARY.value:
+        if game is not None and game.round_history:
+            csv_bytes = session_rounds_to_csv_bytes(game.round_history)
+            clicked = st.download_button(
+                label=button("export_csv", "streamlit"),
+                data=csv_bytes,
+                file_name="ab_game_session.csv",
+                mime="text/csv",
+                key="btn_export_csv",
+            )
+            if clicked:
+                _dispatch(service, state, ACTION_EXPORT_CSV)
         if st.button(button("restart", "streamlit"), key="btn_restart"):
             _dispatch(service, state, ACTION_RESTART)
             st.rerun()
+
+    if debug_mode:
+        _render_debug_panel(state)
 
 
 if __name__ == "__main__":

@@ -11,11 +11,15 @@ app:
   # По умолчанию false (клон без secrets). Включить запись в PG —
   # app.logging_enabled: true + секция logging в secrets.yaml.
   logging_enabled: false
+  # Показывать имена событий и параметры на экране (отладка UX/логов).
+  debug_mode: false
 
 game:
-  # Базовая доля метрики (генеральная совокупность / ветка A)
+  # Базовая доля (fallback). Каждый раунд base_p берётся из [base_p_min, base_p_max].
   base_p: 0.1
-  # Дефолтные noise / effect_relative_range (= нормальный); пресеты ниже перекрывают.
+  base_p_min: 0.05
+  base_p_max: 0.30
+  # Дефолтные noise / effect_* (= нормальный); пресеты difficulties перекрывают.
   noise: 0.05
   n_per_day: 200
   n_days: 14
@@ -23,17 +27,21 @@ game:
   effect_relative_range: 0.2
   rounds_per_session: 20
   alpha: 0.05
-  # Уровни сложности: noise и относительный сдвиг эффекта для ветки B.
+  # Уровни: noise, сдвиг эффекта, вероятность эффекта (должно оставаться ~0.5).
+  # hard: раньше range=0.08 + шум 0.15 → z-тест почти всегда «эффекта нет».
   difficulties:
     easy:
       noise: 0.02
       effect_relative_range: 0.35
+      effect_probability: 0.5
     normal:
       noise: 0.05
       effect_relative_range: 0.20
+      effect_probability: 0.5
     hard:
-      noise: 0.15
-      effect_relative_range: 0.08
+      noise: 0.12
+      effect_relative_range: 0.28
+      effect_probability: 0.5
 
 # Публичный инвариант имени схемы. Host/port/user/password — в secrets.yaml.
 logging:
