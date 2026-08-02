@@ -80,3 +80,6 @@ dmypy.json
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Локальный счётчик NoopLogger
+data/user_counter.json

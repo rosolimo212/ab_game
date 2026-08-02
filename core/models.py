@@ -3,15 +3,50 @@
 Общие структуры данных ядра ab_game.
 
 Цель:
-    Единые типы для дневных точек метрики, веток A/B, раунда, z-теста и баллов.
+    Единые типы для метрики A/B, баллов, сценария UI и идентичности пользователя.
 
 Выход:
-    dataclass-объекты без I/O — ими обмениваются генератор, stats, scoring и UI.
+    dataclass-объекты без I/O — ими обмениваются генератор, stats, scoring, app и UI.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+
+class Screen(str, Enum):
+    """Экраны пользовательского сценария MVP."""
+
+    START = "start"
+    ROUND = "round"
+    FEEDBACK = "feedback"
+    SUMMARY = "summary"
+
+
+# Действия UI → AppService.handle_action (не путать с event_name в логах).
+ACTION_START_SESSION = "start_session"
+ACTION_GUESS_EFFECT = "guess_effect"
+ACTION_GUESS_NO_EFFECT = "guess_no_effect"
+ACTION_NEXT_ROUND = "next_round"
+ACTION_RESTART = "restart"
+
+
+@dataclass(frozen=True)
+class UserIdentity:
+    """
+    Тройка идентификаторов пользователя.
+
+    user_id — sha256(channel:external_user_id), PK в postgres.
+    internal_user_id — BIGSERIAL для аналитики.
+    external_user_id — uuid сессии streamlit (или telegram id позже).
+    """
+
+    user_id: str
+    internal_user_id: int
+    external_user_id: str
 
 
 @dataclass(frozen=True)
@@ -137,3 +172,65 @@ class SessionScore:
     z_stat: float
     significant: bool
     alpha: float
+
+
+@dataclass
+class GameSession:
+    """
+    Состояние игровой сессии (живёт в UI session_state между rerun).
+
+    round_index — 1-based номер текущего раунда (на FEEDBACK — только что сыгранного).
+    round_data — данные текущего раунда (для графика и z-теста); None на START/SUMMARY.
+    """
+
+    round_index: int
+    rounds_per_session: int
+    round_data: RoundData | None = None
+    round_scores: tuple[RoundScore, ...] = ()
+    last_z_result: ZTestResult | None = None
+    last_round_score: RoundScore | None = None
+    session_score: SessionScore | None = None
+
+
+@dataclass
+class AppResponse:
+    """
+    Ответ ядра клиенту после шага сценария.
+
+    UI только показывает text/buttons, переходит на screen и сохраняет game.
+    """
+
+    text: str
+    buttons: list[str] = field(default_factory=list)
+    screen: Screen = Screen.START
+    finished: bool = False
+    game: GameSession | None = None
+
+
+@dataclass
+class UserRecord:
+    """Запись пользователя для таблицы ab_game.users."""
+
+    user_id: str
+    internal_user_id: int
+    external_user_id: str
+    user_name: str
+    registration_date: datetime
+    registration_channel: str
+    last_active_at: datetime
+    is_paid: bool = False
+    is_trial: bool = False
+    is_active: bool = True
+
+
+@dataclass
+class EventRecord:
+    """Запись события для таблицы ab_game.events."""
+
+    timestamp: datetime
+    user_id: str
+    internal_user_id: int
+    external_user_id: str
+    event_name: str
+    channel: str
+    event_parameters: dict[str, Any] | None = None

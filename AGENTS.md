@@ -15,7 +15,7 @@
 
 Стек: Python · Streamlit · Plotly · PostgreSQL · YAML.
 
-Наследовать принципы и каркас из `/home/roman/python/kotelok/template`; UI/logging-паттерны — из `/home/roman/python/wvs_bot` (без копирования WVS-логики).
+Наследовать принципы и каркас из `/home/roman/python/kotelok/template`; UI/logging-паттерны — оттуда же (wvs_bot отсутствует).
 
 ---
 
@@ -24,9 +24,9 @@
 1. Максимальная инкапсуляция (UI / ядро / stats / генератор / логи сменяемы).
 2. Предельная простота; комментарии **на русском**.
 3. UI без бизнес-логики; домен без I/O.
-4. Тексты пользователя → `data/dialog_messages.json` (когда появится UI).
+4. Тексты пользователя → `data/dialog_messages.json`.
 5. Избыточные тесты: pytest + позже `business_checks.py`.
-6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore` (в т.ч. `secrets.yaml`).
+6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore`.
 7. Коммиты только по просьбе.
 
 ---
@@ -35,25 +35,26 @@
 
 | Файл | Git | Назначение |
 |------|-----|------------|
-| `settings.yaml` | **да** (единственный yaml в репо) | `app`, `game`, публичный `logging`/`testing` |
+| `settings.yaml` | **да** | `app`, `game`, публичный `logging`/`testing` |
 | `secrets.yaml` | **нет** | пароли, токены |
 
-`.gitignore`: `*.yaml` + `!settings.yaml`.
-
-Создать секреты локально:
-
-```yaml
-# secrets.yaml  (не коммитить)
-logging:
-  password: "..."
-testing:
-  password: "..."
-# telegram:
-#   token: "..."
-```
-
 `load_app_config("settings.yaml", "secrets.yaml")` — deep-merge.  
-При `logging_enabled: false` файл secrets можно не создавать.
+При `logging_enabled: false` secrets можно не создавать.
+
+---
+
+## Сценарий UI
+
+Экраны: `START` → `ROUND` → `FEEDBACK` → … → `SUMMARY`.
+
+| Action | Смысл |
+|--------|--------|
+| `start_session` / `restart` | Новая сессия, раунд 1 |
+| `guess_effect` / `guess_no_effect` | Догадка → z-тест + балл → FEEDBACK |
+| `next_round` | Следующий раунд или SUMMARY |
+
+`GameSession` живёт в `st.session_state` (AppService пересоздаётся на rerun).  
+События логов: `start_screen_visit`, `session_start`, `round_shown`, `guess_submitted`, `session_finished`.
 
 ---
 
@@ -67,64 +68,48 @@ testing:
 | эффекта нет | `p_value >= 0.05` | 1 |
 | иначе | | 0 |
 
-**Итог сессии** (`core/scoring.py`):
+**Итог сессии:** accuracy + Wilson CI + z-тест H0: p=0.5.
 
-- `accuracy` = доля раундов с `points=1`
-- Wilson CI для доли при `alpha` из settings
-- z-тест H0: accuracy = 0.5 → `p_value` / `significant` (мета-ирония)
+**Генератор / stats / charts:** см. `core/generator.py`, `core/stats.py`, `ui/charts.py`.
 
-**Генератор** (`core/generator.py`): биномиальная доля [0,1]; 2 ветки; с вероятностью 0.5 сдвиг B: `base_p * (1 + U(-0.2,+0.2))`; иначе тот же `p`; дневной `noise`; дефолт 14 дней; `n_per_day` из settings.
-
-**Стат-тест** (`core/stats.py`): pooled z-тест двух пропорций по сумме дней; `alpha=0.05`.
-
-**График** (`ui/charts.py`): Plotly — дневная доля; hover: rate / числитель / знаменатель; `build_ab_chart(round_data)`.
-
-**UX (ещё не в коде):** 20 раундов; фидбек сразу; Streamlit показывает график + кнопки догадки + итог сессии.
-
-**Postgres:** БД `communication`, схема `ab_game`.
+**Postgres:** БД `communication`, схема `ab_game` (`sql/001_init.sql`).
 
 ---
 
 ## Структура сейчас
 
 ```
-core/config.py models.py generator.py stats.py scoring.py
-ui/charts.py          # Plotly Figure из RoundData
-data/ sql/            # placeholder
-tests/
-  test_config.py
-  test_generator.py
-  test_stats.py
-  test_scoring.py
-  test_charts.py
-settings.yaml         # в git
-run_tests.sh          # ./run_tests.sh
-requirements.txt
-requirements-dev.txt
+core/
+  config.py models.py generator.py stats.py scoring.py
+  app.py brain.py messages.py identity.py db.py
+  logging/{base,noop,postgres,factory}.py
+ui/
+  charts.py helpers.py base.py streamlit_app.py
+data/dialog_messages.json
+sql/001_init.sql
+main.py
+tests/   # config, generator, stats, scoring, charts, app, logging, messages, identity
+settings.yaml
 ```
 
 ---
 
-## Как запускать тесты
-
-Тесты лежат в `tests/`. Запуск из корня проекта:
+## Как запускать
 
 ```bash
+# приложение
+streamlit run ui/streamlit_app.py
+
+# тесты
 ./run_tests.sh
-# или:
-.venv/bin/pytest tests/ -q
+# ожидаемо: 42 passed
 ```
 
-Первая установка:
+Схема БД (если `logging_enabled: true`):
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-# минимум для ядра: numpy PyYAML plotly pytest
-./run_tests.sh
+psql -h localhost -U roman -d communication -f sql/001_init.sql
 ```
-
-Ожидаемо: **24 passed** (config, generator, stats, scoring, charts).
 
 ---
 
@@ -137,15 +122,14 @@ python3 -m venv .venv
 | 3 | Z-тест | **готово** |
 | 4 | Scoring раунда/сессии | **готово** |
 | 5 | Plotly | **готово** |
-| 6 | AppService + Streamlit | не начат |
-| 7 | Postgres logging | не начат |
+| 6 | AppService + Streamlit | **готово** |
+| 7 | Postgres logging | **готово** |
 | 8 | business_checks + pre_commit | не начат |
 
-Следующий по плану: **6. AppService + Streamlit**.
+Следующий по плану: **8. business_checks + pre_commit**.
 
 ---
 
-## Локальные незакоммиченные правки (на момент записи)
+## Коммиты
 
-Возможно есть незакоммиченные изменения этапов 1–5 и инфраструктуры (gitignore, run_tests.sh и т.д.).  
 Коммитить **только по просьбе пользователя**.
