@@ -15,9 +15,9 @@
 | 5 | Plotly | **готово** |
 | 6 | Streamlit / сценарий | **готово** |
 | 7 | Postgres (`ab_game`) | **готово** |
-| 8 | business_checks + pre_commit | не начат |
+| 8 | business_checks + pre_commit | **готово** |
 
-После каждого этапа обновляются этот README и `AGENTS.md`.
+MVP по плану завершён.
 
 ## Запуск приложения
 
@@ -29,14 +29,19 @@ streamlit run ui/streamlit_app.py
 # или: python main.py
 ```
 
-## Запуск тестов
+## Тесты
 
 ```bash
 .venv/bin/pip install -r requirements-dev.txt
+
+# слой 1 — unit/integration pytest
 ./run_tests.sh
+
+# слой 1 + слой 2 (business_checks) — перед коммитом
+./pre_commit_check.sh
 ```
 
-Сейчас ожидается: **42 passed**.
+Ожидается: **42 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 
@@ -65,15 +70,10 @@ testing:
 
 ## Уже в коде
 
-- `core/config.py` — merge settings ⊕ secrets  
-- `core/generator.py` — `generate_round` → `RoundData`  
-- `core/stats.py` — pooled z-тест пропорций  
-- `core/scoring.py` — балл раунда + итог сессии  
-- `core/app.py` / `core/brain.py` — сценарий START → ROUND → FEEDBACK → SUMMARY  
-- `core/logging/` — PostgresLogger / NoopLogger  
-- `ui/charts.py` — Plotly Figure  
-- `ui/streamlit_app.py` — клиент  
+- `core/` — конфиг, генератор, z-тест, scoring, AppService, logging  
+- `ui/` — Plotly + Streamlit  
 - `data/dialog_messages.json` — тексты  
+- `business_checks.py` + `pre_commit_check.sh` — слой 2  
 
 ## Правила игры (MVP)
 
@@ -81,7 +81,3 @@ testing:
 - Правильный ответ = согласие с z-тестом при α = 5% (не флаг эффекта генератора).
 - Фидбек сразу; итог = доля верных + Wilson CI + p-value против 0.5.
 - График: метрика за день; hover — rate, числитель, знаменатель.
-
-## Дальше
-
-8. business_checks + pre_commit

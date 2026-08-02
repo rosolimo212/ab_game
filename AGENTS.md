@@ -25,7 +25,7 @@
 2. Предельная простота; комментарии **на русском**.
 3. UI без бизнес-логики; домен без I/O.
 4. Тексты пользователя → `data/dialog_messages.json`.
-5. Избыточные тесты: pytest + позже `business_checks.py`.
+5. Избыточные тесты: pytest + `business_checks.py` + `./pre_commit_check.sh`.
 6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore`.
 7. Коммиты только по просьбе.
 
@@ -70,26 +70,23 @@
 
 **Итог сессии:** accuracy + Wilson CI + z-тест H0: p=0.5.
 
-**Генератор / stats / charts:** см. `core/generator.py`, `core/stats.py`, `ui/charts.py`.
-
 **Postgres:** БД `communication`, схема `ab_game` (`sql/001_init.sql`).
 
 ---
 
-## Структура сейчас
+## Структура
 
 ```
-core/
-  config.py models.py generator.py stats.py scoring.py
-  app.py brain.py messages.py identity.py db.py
-  logging/{base,noop,postgres,factory}.py
-ui/
-  charts.py helpers.py base.py streamlit_app.py
+core/          # конфиг, модели, generator, stats, scoring, app, brain, logging
+ui/            # charts, helpers, streamlit_app
 data/dialog_messages.json
 sql/001_init.sql
+business_checks.py
+pre_commit_check.sh
+run_tests.sh
 main.py
-tests/   # config, generator, stats, scoring, charts, app, logging, messages, identity
 settings.yaml
+tests/
 ```
 
 ---
@@ -97,12 +94,10 @@ settings.yaml
 ## Как запускать
 
 ```bash
-# приложение
 streamlit run ui/streamlit_app.py
 
-# тесты
-./run_tests.sh
-# ожидаемо: 42 passed
+./run_tests.sh              # слой 1: pytest → 42 passed
+./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 
 Схема БД (если `logging_enabled: true`):
@@ -124,9 +119,9 @@ psql -h localhost -U roman -d communication -f sql/001_init.sql
 | 5 | Plotly | **готово** |
 | 6 | AppService + Streamlit | **готово** |
 | 7 | Postgres logging | **готово** |
-| 8 | business_checks + pre_commit | не начат |
+| 8 | business_checks + pre_commit | **готово** |
 
-Следующий по плану: **8. business_checks + pre_commit**.
+**MVP по плану завершён.** Дальше — только по новым запросам (telegram/console, cookies, CI и т.д.).
 
 ---
 
