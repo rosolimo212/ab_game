@@ -12,7 +12,7 @@ app:
   # app.logging_enabled: true + секция logging в secrets.yaml.
   logging_enabled: false
   # Показывать имена событий и параметры на экране (отладка UX/логов).
-  debug_mode: false
+  debug_mode: true
 
 game:
   # Базовая доля (fallback). Каждый раунд base_p берётся из [base_p_min, base_p_max].
