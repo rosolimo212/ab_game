@@ -80,6 +80,29 @@ testing:
 При `app.logging_enabled: false` в settings (дефолт) secrets не обязателен.  
 Для записи логов: `psql … -f sql/001_init.sql` + блок выше в `secrets.yaml` (включая `logging_enabled: true`).
 
+## События в Postgres (`ab_game.events`)
+
+Пишутся при `logging_enabled: true`. Таблица: `ab_game.events`, параметры — JSONB в `event_parameters`.
+
+| event_name | Когда | Параметры |
+|------------|--------|-----------|
+| `start_screen_visit` | Первый заход / `handle_start` | — |
+| `button_start` | Клик «Начать» | `action` |
+| `button_restart` | Клик «Играть снова» | `action` |
+| `button_guess_effect` | Клик «Эффект есть» | `action` |
+| `button_guess_no_effect` | Клик «Эффекта нет» | `action` |
+| `button_next_round` | Клик «Далее» | `action` |
+| `session_start` | Старт новой игровой сессии | `rounds_per_session` |
+| `round_shown` | Показан график раунда | `round_index`, `noise`, `mean_a`, `mean_b`, `p_value` |
+| `guess_submitted` | Догадка обработана (после клика) | `round_index`, `user_answer` (`effect` / `no_effect`), `guess_has_effect`, `test_significant`, `points`, `p_value` |
+| `game_finished` | Сессия завершена, показан итог | `n_correct`, `n_rounds`, `accuracy`, `ci_low`, `ci_high`, `p_value`, `significant` |
+
+Пояснения:
+
+- `mean_a` / `mean_b` — пулырованные доли веток за все дни раунда.
+- `p_value` в `round_shown` — z-тест по данным графика (для аналитики; игрок его ещё не видит).
+- Клики `button_*` и бизнес-события (`guess_submitted`, `round_shown`, …) пишутся отдельно: клик — факт нажатия, остальное — результат обработки.
+
 ## Уже в коде
 
 - `core/` — конфиг, генератор, z-тест, scoring, AppService, logging  

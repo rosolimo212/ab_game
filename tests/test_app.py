@@ -177,7 +177,22 @@ def test_full_short_session_flow() -> None:
     assert "session_start" in names
     assert names.count("round_shown") == 2
     assert names.count("guess_submitted") == 2
-    assert "session_finished" in names
+    assert "game_finished" in names
+    assert "button_start" in names
+    assert "button_guess_effect" in names
+    assert "button_guess_no_effect" in names
+    assert "button_next_round" in names
+
+    shown = [e for e in logger.events if e["event_name"] == "round_shown"]
+    params = shown[0]["event_parameters"] or {}
+    assert "noise" in params
+    assert "mean_a" in params
+    assert "mean_b" in params
+    assert "p_value" in params
+
+    guesses = [e for e in logger.events if e["event_name"] == "guess_submitted"]
+    assert guesses[0]["event_parameters"]["user_answer"] == "effect"
+    assert guesses[1]["event_parameters"]["user_answer"] == "no_effect"
 
 
 def test_restart_starts_new_session() -> None:

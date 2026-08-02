@@ -48,10 +48,13 @@ from ui.charts import build_ab_chart
 
 REQUIRED_EVENTS = [
     "start_screen_visit",
+    "button_start",
     "session_start",
     "round_shown",
+    "button_guess_effect",
     "guess_submitted",
-    "session_finished",
+    "button_next_round",
+    "game_finished",
 ]
 
 REQUIRED_FILES = [
@@ -398,6 +401,16 @@ def check_guess_event_params_match_score() -> None:
         raise AssertionError("points в логе != RoundScore")
     if params.get("guess_has_effect") is not True:
         raise AssertionError("guess_has_effect в логе неверен")
+    if params.get("user_answer") != "effect":
+        raise AssertionError("user_answer в логе неверен")
+
+    shown = [e for e in logger.events if e["event_name"] == "round_shown"]
+    if not shown:
+        raise AssertionError("Нет round_shown")
+    rp = shown[0]["event_parameters"] or {}
+    for key in ("noise", "mean_a", "mean_b", "p_value", "round_index"):
+        if key not in rp:
+            raise AssertionError(f"В round_shown нет {key}")
 
 
 def check_z_test_round_smoke() -> None:

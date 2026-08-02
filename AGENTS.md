@@ -76,8 +76,10 @@ testing:
 | `guess_effect` / `guess_no_effect` | Догадка → z-тест + балл → FEEDBACK |
 | `next_round` | Следующий раунд или SUMMARY |
 
-`GameSession` живёт в `st.session_state` (AppService пересоздаётся на rerun).  
-События логов: `start_screen_visit`, `session_start`, `round_shown`, `guess_submitted`, `session_finished`.
+`GameSession` живёт в `st.session_state` (AppService пересоздаётся на rerun).
+
+**События логов** (подробнее в README):  
+`start_screen_visit`, `button_*`, `session_start`, `round_shown` (noise/mean_a/mean_b/p_value), `guess_submitted` (+ `user_answer`), `game_finished`.
 
 ---
 

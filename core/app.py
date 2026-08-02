@@ -32,10 +32,20 @@ from core.models import (
     ACTION_START_SESSION,
     AppResponse,
     GameSession,
+    RoundData,
     UserIdentity,
 )
 from core.scoring import score_round, score_session
 from core.stats import z_test_round
+
+# ACTION_* → имя события клика по кнопке в логах.
+BUTTON_CLICK_EVENTS = {
+    ACTION_START_SESSION: "button_start",
+    ACTION_RESTART: "button_restart",
+    ACTION_GUESS_EFFECT: "button_guess_effect",
+    ACTION_GUESS_NO_EFFECT: "button_guess_no_effect",
+    ACTION_NEXT_ROUND: "button_next_round",
+}
 
 
 class AppService:
@@ -65,6 +75,33 @@ class AppService:
     def _rounds_per_session(self) -> int:
         return int(self._game_cfg()["rounds_per_session"])
 
+    def _log_button_click(
+        self, identity: UserIdentity, channel: str, action: str
+    ) -> None:
+        """Явное событие клика по кнопке UI."""
+        event_name = BUTTON_CLICK_EVENTS.get(action)
+        if event_name is None:
+            return
+        self.logger.log_event(
+            identity=identity,
+            event_name=event_name,
+            channel=channel,
+            event_parameters={"action": action},
+        )
+
+    def _round_shown_params(
+        self, round_index: int, round_data: RoundData
+    ) -> dict[str, Any]:
+        """Параметры раунда для лога: шум, средние A/B, p-value z-теста."""
+        z_result = z_test_round(round_data, alpha=self._alpha())
+        return {
+            "round_index": round_index,
+            "noise": float(self._game_cfg()["noise"]),
+            "mean_a": round_data.branch_a.pooled_rate,
+            "mean_b": round_data.branch_b.pooled_rate,
+            "p_value": z_result.p_value,
+        }
+
     def handle_start(
         self,
         identity: UserIdentity,
@@ -93,6 +130,7 @@ class AppService:
         payload = payload or {}
         identity = self._resolve_identity(identity, channel)
         self._touch_user(identity, channel)
+        self._log_button_click(identity, channel, action)
 
         if action in (ACTION_START_SESSION, ACTION_RESTART):
             return self._start_session(identity, channel)
@@ -153,7 +191,7 @@ class AppService:
             identity=identity,
             event_name="round_shown",
             channel=channel,
-            event_parameters={"round_index": 1},
+            event_parameters=self._round_shown_params(1, round_data),
         )
         return on_round(channel, game)
 
@@ -176,6 +214,7 @@ class AppService:
 
         z_result = z_test_round(game.round_data, alpha=self._alpha())
         round_score = score_round(guess_has_effect, z_result)
+        user_answer = "effect" if guess_has_effect else "no_effect"
         updated = GameSession(
             round_index=game.round_index,
             rounds_per_session=game.rounds_per_session,
@@ -191,6 +230,7 @@ class AppService:
             channel=channel,
             event_parameters={
                 "round_index": updated.round_index,
+                "user_answer": user_answer,
                 "guess_has_effect": guess_has_effect,
                 "test_significant": z_result.significant,
                 "points": round_score.points,
@@ -222,7 +262,7 @@ class AppService:
             )
             self.logger.log_event(
                 identity=identity,
-                event_name="session_finished",
+                event_name="game_finished",
                 channel=channel,
                 event_parameters={
                     "n_correct": session_score.n_correct,
@@ -248,6 +288,6 @@ class AppService:
             identity=identity,
             event_name="round_shown",
             channel=channel,
-            event_parameters={"round_index": next_index},
+            event_parameters=self._round_shown_params(next_index, round_data),
         )
         return on_round(channel, nxt)
