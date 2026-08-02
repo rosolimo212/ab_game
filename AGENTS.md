@@ -35,11 +35,34 @@
 
 | Файл | Git | Назначение |
 |------|-----|------------|
-| `settings.yaml` | **да** | `app`, `game`, публичный `logging`/`testing` |
-| `secrets.yaml` | **нет** | пароли, токены |
+| `settings.yaml` | **да** | `app`, `game`, публичный `logging.schema` |
+| `secrets.yaml` | **нет** (`*.yaml` в `.gitignore`) | Postgres host/port/db/user/password + `logging_enabled` |
 
 `load_app_config("settings.yaml", "secrets.yaml")` — deep-merge.  
-При `logging_enabled: false` secrets можно не создавать.
+При `logging_enabled: false` (дефолт в settings) файл secrets можно не создавать.
+
+Локальный образец `secrets.yaml`:
+
+```yaml
+app:
+  logging_enabled: true
+
+logging:
+  host: localhost
+  port: 5432
+  database: communication
+  user: roman
+  password: "..."
+  schema: ab_game
+
+testing:
+  host: localhost
+  port: 5432
+  database: communication
+  user: tester
+  password: "..."
+  schema: ab_game
+```
 
 ---
 
@@ -96,7 +119,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 42 passed
+./run_tests.sh              # слой 1: pytest → 43 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 

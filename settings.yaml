@@ -1,5 +1,6 @@
 # Публичные настройки приложения (этот файл — единственный yaml в git).
-# Секреты (пароли, токены) — только в secrets.yaml (не коммитить; образец в AGENTS.md).
+# Параметры Postgres (host/port/user/password/…) и logging_enabled:true —
+# только в локальном secrets.yaml (не коммитить; образец в AGENTS.md / README).
 #
 # БД communication — одно имя на stage и prod.
 # Схема ab_game; данные разделены разными серверами postgres.
@@ -7,6 +8,8 @@
 app:
   # MVP: только streamlit (telegram/console — позже)
   interface: streamlit
+  # По умолчанию false (клон без secrets). Включить запись в PG —
+  # app.logging_enabled: true + секция logging в secrets.yaml.
   logging_enabled: false
 
 game:
@@ -27,16 +30,6 @@ game:
   # Порог значимости z-теста
   alpha: 0.05
 
+# Публичный инвариант имени схемы. Host/port/user/password — в secrets.yaml.
 logging:
-  host: localhost
-  port: 5432
-  database: communication
-  user: roman
   schema: ab_game
-  # password — только в secrets.yaml
-
-testing:
-  user: tester
-  database: communication
-  schema: ab_game
-  # password — только в secrets.yaml

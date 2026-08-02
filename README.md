@@ -41,7 +41,7 @@ streamlit run ui/streamlit_app.py
 ./pre_commit_check.sh
 ```
 
-Ожидается: **42 passed** (pytest) и **15 OK** (business_checks).
+Ожидается: **43 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 
@@ -53,20 +53,32 @@ streamlit run ui/streamlit_app.py
 
 ## Конфиг
 
-В git попадает **только** `settings.yaml`. Локально для паролей:
+В git попадает **только** `settings.yaml` (`.gitignore`: `*.yaml` + `!settings.yaml`).  
+Параметры Postgres и включение логов — в локальном `secrets.yaml`:
 
 ```yaml
+app:
+  logging_enabled: true
+
 logging:
+  host: localhost
+  port: 5432
+  database: communication
+  user: roman
   password: "..."
+  schema: ab_game
+
 testing:
+  host: localhost
+  port: 5432
+  database: communication
+  user: tester
   password: "..."
+  schema: ab_game
 ```
 
-При `app.logging_enabled: false` secrets не обязателен. Для записи логов:
-
-1. `psql -h localhost -U roman -d communication -f sql/001_init.sql`
-2. В `settings.yaml`: `app.logging_enabled: true`
-3. Пароль в `secrets.yaml`
+При `app.logging_enabled: false` в settings (дефолт) secrets не обязателен.  
+Для записи логов: `psql … -f sql/001_init.sql` + блок выше в `secrets.yaml` (включая `logging_enabled: true`).
 
 ## Уже в коде
 

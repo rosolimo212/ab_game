@@ -7,7 +7,7 @@
 
 Файлы:
     settings.yaml  — публичные параметры (единственный yaml в git).
-    secrets.yaml   — креды (НЕ в git; создаётся локально по образцу из AGENTS.md / README).
+    secrets.yaml   — Postgres (host/port/user/password/…) и токены (НЕ в git).
 
 Вход:
     Пути к settings и secrets (secrets можно не требовать, если logging_enabled=false).
@@ -17,6 +17,7 @@
 
 Риски:
     Все *.yaml кроме settings.yaml игнорируются git — не ослаблять .gitignore.
+    При logging_enabled=true полный блок logging должен быть после merge (обычно из secrets).
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ REQUIRED_GAME_KEYS = (
     "rounds_per_session",
     "alpha",
 )
-REQUIRED_LOGGING_PUBLIC_KEYS = ("host", "port", "database", "user", "schema")
+REQUIRED_LOGGING_CONN_KEYS = ("host", "port", "database", "user", "password", "schema")
 
 
 def _load_yaml_file(yaml_file: str | Path) -> dict[str, Any]:
@@ -139,7 +140,7 @@ def _validate_merged_config(cfg: dict[str, Any]) -> None:
     if "game" not in cfg or not isinstance(cfg["game"], dict):
         raise ValueError("Обязательна секция game в settings.yaml")
     if "logging" not in cfg or not isinstance(cfg["logging"], dict):
-        raise ValueError("Обязательна секция logging в settings.yaml")
+        raise ValueError("Обязательна секция logging (settings и/или secrets)")
 
     app_cfg = cfg["app"]
     game_cfg = cfg["game"]
@@ -156,19 +157,18 @@ def _validate_merged_config(cfg: dict[str, Any]) -> None:
 
     _validate_game_section(game_cfg)
 
-    for key in REQUIRED_LOGGING_PUBLIC_KEYS:
-        if key not in logging_cfg:
-            raise ValueError(f"В секции logging обязателен ключ {key!r}")
-
     if logging_cfg.get("schema") != "ab_game":
         raise ValueError("Схема логирования должна называться ab_game")
 
     logging_enabled = bool(app_cfg["logging_enabled"])
-    if logging_enabled and not logging_cfg.get("password"):
-        raise ValueError(
-            "При logging_enabled=true нужен logging.password в secrets.yaml "
-            "(формат — в AGENTS.md / README.md)"
-        )
+    if logging_enabled:
+        missing = [k for k in REQUIRED_LOGGING_CONN_KEYS if not logging_cfg.get(k)]
+        if missing:
+            raise ValueError(
+                "При logging_enabled=true в secrets.yaml (секция logging) нужны ключи: "
+                + ", ".join(REQUIRED_LOGGING_CONN_KEYS)
+                + f". Не хватает: {', '.join(missing)}"
+            )
 
     if interface == "telegram":
         telegram_cfg = cfg.get("telegram") or {}
