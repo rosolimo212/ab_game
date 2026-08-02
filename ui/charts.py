@@ -5,7 +5,7 @@ Plotly-график двух веток A/B для одного раунда.
 Цель:
     По RoundData построить фигуру: дневная доля по оси Y, день — по X.
     Ось Y: всегда от 0 до max(rate)*1.15.
-    Стиль — kotelok (`../style/kotelok_plotly.py`), фон прозрачный (Streamlit).
+    Стиль — локальный style/kotelok_plotly.py; фон прозрачный (Streamlit).
 
 Подписи осей и hover — из data/dialog_messages.json.
 """
@@ -21,8 +21,8 @@ import plotly.graph_objects as go
 from core.messages import message
 from core.models import BranchSeries, RoundData
 
-# Sibling: /home/roman/python/kotelok/style (как в stl.ipynb).
-_STYLE_DIR = Path(__file__).resolve().parents[2] / "style"
+# Vendored kotelok style (в git вместе с big_kettler.png).
+_STYLE_DIR = Path(__file__).resolve().parents[1] / "style"
 if str(_STYLE_DIR) not in sys.path:
     sys.path.insert(0, str(_STYLE_DIR))
 
@@ -175,7 +175,7 @@ def build_ab_chart(
         layout["title"] = title
     fig.update_layout(**layout)
 
-    # Как в style/stl.ipynb: apply на готовую фигуру (без фиксации width —
+    # Vendored style/kotelok_plotly.apply (без фиксации width —
     # Streamlit тянет use_container_width).
     apply(fig)
     _add_logo_white_frame(fig)

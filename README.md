@@ -47,7 +47,7 @@ streamlit run ui/streamlit_app.py
 
 - Python 3.10+
 - UI: Streamlit (`ui/streamlit_app.py`)
-- Графики: Plotly (`ui/charts.py`)
+- Графики: Plotly (`ui/charts.py`) + стиль Kotelok (`style/`)
 - Логи: PostgreSQL, БД `communication`, схема `ab_game` (`sql/001_init.sql`)
 - Конфиг: `settings.yaml` (в git) + локальный `secrets.yaml` (не в git)
 

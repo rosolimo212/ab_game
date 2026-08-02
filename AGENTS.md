@@ -77,7 +77,7 @@ testing:
 
 `base_p` раунда ∈ [`base_p_min`, `base_p_max`]; hard не должен давать «эффекта нет» почти всегда (см. `game.difficulties.hard`).
 
-Стиль графиков: `kotelok_plotly.apply` из sibling `../style/` (как в `stl.ipynb`); `paper`/`plot` bg — прозрачные.
+Стиль графиков: vendored `style/kotelok_plotly.py` + `style/big_kettler.png`; `paper`/`plot` bg — прозрачные.
 
 | Action | Смысл |
 |--------|--------|
@@ -114,6 +114,7 @@ testing:
 ```
 core/          # конфиг, модели, generator, stats, scoring, app, brain, logging
 ui/            # charts, helpers, streamlit_app
+style/         # kotelok Plotly (kotelok_plotly.py + big_kettler.png)
 data/dialog_messages.json
 sql/001_init.sql
 business_checks.py

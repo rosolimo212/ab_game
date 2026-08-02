@@ -69,6 +69,7 @@ dmypy.json
 
 *.csv
 *.png
+!style/big_kettler.png
 *.jpg
 *.jpeg
 *.gif

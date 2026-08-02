@@ -70,6 +70,8 @@ REQUIRED_FILES = [
     "core/logging/postgres.py",
     "ui/streamlit_app.py",
     "ui/charts.py",
+    "style/kotelok_plotly.py",
+    "style/big_kettler.png",
     "data/dialog_messages.json",
     "sql/001_init.sql",
 ]
