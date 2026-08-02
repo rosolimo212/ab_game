@@ -113,6 +113,12 @@ def build_ab_chart(
     # Streamlit тянет use_container_width).
     apply(fig)
 
+    # kotelok.apply всегда кладёт layout.title без text → Plotly JS рисует
+    # «undefined». Если заголовка нет — явно пустая строка; иначе оставляем
+    # текст после apply/_align_title.
+    if title is None:
+        fig.update_layout(title_text="")
+
     # Игровые оси + прозрачный фон поверх белого из шаблона kotelok.
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",

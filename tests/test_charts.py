@@ -73,4 +73,5 @@ def test_build_ab_chart_title_optional() -> None:
     fig = build_ab_chart(_sample_round(), title=None)
     title = fig.layout.title
     text = getattr(title, "text", None) if title is not None else None
-    assert text in (None, "")
+    # Пустая строка, не None: иначе Plotly/JS показывает «undefined».
+    assert text == ""
