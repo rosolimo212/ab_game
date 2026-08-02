@@ -35,7 +35,7 @@ def _sample_round() -> RoundData:
 
 
 def test_build_ab_chart_two_traces() -> None:
-    fig = build_ab_chart(_sample_round())
+    fig = build_ab_chart(_sample_round(), title="")
     assert len(fig.data) == 2
     assert fig.data[0].name == "A"
     assert fig.data[1].name == "B"
@@ -48,6 +48,9 @@ def test_build_ab_chart_two_traces() -> None:
     # ось Y: 0 .. max*1.15 (max rate = 0.22)
     assert fig.layout.yaxis.range[0] == 0.0
     assert abs(fig.layout.yaxis.range[1] - 0.22 * 1.15) < 1e-9
+    # легенда под графиком
+    assert fig.layout.legend.y < 0
+    assert ".2%" in str(fig.layout.yaxis.tickformat)
 
 
 def test_build_ab_chart_hover_has_counts() -> None:

@@ -97,4 +97,6 @@ def test_feedback_panel_mentions_targets() -> None:
     text = format_feedback_stats(round_data, z)
     assert "целевое" in text
     assert "фактическое" in text
-    assert "p-value" in text.lower() or "p-value" in text
+    assert "10.00%" in text
+    assert "20.00%" in text
+    assert "%" in text

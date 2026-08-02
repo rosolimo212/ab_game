@@ -1,16 +1,25 @@
 # coding: utf-8
 """
 Сводка метрик раунда для панели рядом с графиком (экран FEEDBACK).
+
+Тексты шаблонов — только из data/dialog_messages.json.
 """
 
 from __future__ import annotations
 
+from core.format_text import fmt_p_value, fmt_pct, fmt_signed_pct_points
+from core.messages import message
 from core.models import RoundData, ZTestResult
 
 
-def format_feedback_stats(round_data: RoundData, z_result: ZTestResult) -> str:
+def format_feedback_stats(
+    round_data: RoundData,
+    z_result: ZTestResult,
+    *,
+    channel: str = "streamlit",
+) -> str:
     """
-    Текст панели: целевые / фактические средние, относительная разница, p-value.
+    Текст панели: целевые / фактические средние (%), относительная разница, p-value.
 
     Целевое — true_p ветки (до дневного шума).
     Фактическое — пулырованная доля по наблюдениям (с шумом и выборкой).
@@ -21,15 +30,21 @@ def format_feedback_stats(round_data: RoundData, z_result: ZTestResult) -> str:
     actual_b = round_data.branch_b.pooled_rate
 
     if actual_a > 0.0:
-        diff_pct = 100.0 * (actual_b - actual_a) / actual_a
-        diff_line = f"{diff_pct:+.1f}% относительно A"
+        diff_line = message(
+            "feedback_stats_diff",
+            channel,
+            diff_pct=fmt_signed_pct_points((actual_b - actual_a) / actual_a),
+        )
     else:
-        diff_line = "н/д (среднее A = 0)"
+        diff_line = message("feedback_stats_diff_na", channel)
 
-    return (
-        "**Метрики раунда**\n\n"
-        f"**A** — целевое: `{target_a:.4f}`, фактическое: `{actual_a:.4f}`\n\n"
-        f"**B** — целевое: `{target_b:.4f}`, фактическое: `{actual_b:.4f}`\n\n"
-        f"**Разница (факт.)**: {diff_line}\n\n"
-        f"**p-value (z-тест)**: `{z_result.p_value:.4g}`"
+    return message(
+        "feedback_stats",
+        channel,
+        target_a=fmt_pct(target_a),
+        actual_a=fmt_pct(actual_a),
+        target_b=fmt_pct(target_b),
+        actual_b=fmt_pct(actual_b),
+        diff_line=diff_line,
+        p_value=fmt_p_value(z_result.p_value),
     )

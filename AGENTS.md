@@ -24,10 +24,12 @@
 1. Максимальная инкапсуляция (UI / ядро / stats / генератор / логи сменяемы).
 2. Предельная простота; комментарии **на русском**.
 3. UI без бизнес-логики; домен без I/O.
-4. Тексты пользователя → `data/dialog_messages.json`.
+4. Тексты пользователя → **только** `data/dialog_messages.json` (в т.ч. панель FEEDBACK, оси/hover графика, вердикты). Числа → `core/format_text.py` (`fmt_pct` ≤ 2 знака + `%`).
 5. Избыточные тесты: pytest + `business_checks.py` + `./pre_commit_check.sh`.
 6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore`.
 7. Коммиты только по просьбе.
+
+Легенда Plotly — **под** графиком (`legend.y < 0`), чтобы не наезжала на текст сверху.
 
 ---
 
@@ -122,7 +124,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 47 passed
+./run_tests.sh              # слой 1: pytest → 50 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 

@@ -41,7 +41,7 @@ streamlit run ui/streamlit_app.py
 ./pre_commit_check.sh
 ```
 
-Ожидается: **47 passed** (pytest) и **15 OK** (business_checks).
+Ожидается: **50 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 
@@ -89,7 +89,7 @@ testing:
 | `start_screen_visit` | Первый заход / `handle_start` | — |
 | `button_continue` | Клик «Далее» после ввода имени | `action` |
 | `name_entered` | Имя сохранено | `user_name` |
-| `button_difficulty_easy` / `_normal` / `_hard` | Выбор сложности | `action` |
+| `button_difficulty_click` | Выбор сложности | `action`, `difficulty` (`easy` / `normal` / `hard`) |
 | `session_start` | Старт игровой сессии | `rounds_per_session`, `difficulty`, `noise`, `effect_relative_range`, `user_name` |
 | `round_shown` | Показан график раунда | `round_index`, `difficulty`, `noise`, `mean_a`, `mean_b`, `target_a`, `target_b`, `p_value` |
 | `button_guess_effect` / `button_guess_no_effect` | Клик догадки | `action` |
@@ -105,7 +105,8 @@ testing:
 
 - `core/` — конфиг, генератор, z-тест, scoring, AppService, logging  
 - `ui/` — Plotly + Streamlit  
-- `data/dialog_messages.json` — тексты  
+- `data/dialog_messages.json` — **все** user-facing тексты и кнопки (править здесь)  
+- `core/format_text.py` — проценты (`12.34%`) и p-value  
 - `business_checks.py` + `pre_commit_check.sh` — слой 2  
 
 ## Правила игры (MVP)

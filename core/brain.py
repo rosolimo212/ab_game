@@ -10,20 +10,9 @@
 from __future__ import annotations
 
 from core.difficulty import difficulty_label
+from core.format_text import fmt_p_value, fmt_pct
 from core.messages import button, message
 from core.models import AppResponse, GameSession, Screen
-
-
-def _fmt_pct(value: float) -> str:
-    """Доля → строка процентов с одним знаком."""
-    return f"{100.0 * value:.1f}%"
-
-
-def _fmt_p(value: float) -> str:
-    """p-value для отображения."""
-    if value < 0.001:
-        return f"{value:.2e}"
-    return f"{value:.4f}"
 
 
 def on_welcome(channel: str, rounds_total: int) -> AppResponse:
@@ -94,15 +83,21 @@ def on_feedback(channel: str, game: GameSession) -> AppResponse:
     if score is None or z_result is None:
         raise ValueError("Для FEEDBACK нужны last_round_score и last_z_result")
 
-    result_line = "верно" if score.points == 1 else "неверно"
-    verdict = "эффект значим" if z_result.significant else "эффекта нет"
+    result_line = message(
+        "feedback_result_ok" if score.points == 1 else "feedback_result_fail",
+        channel,
+    )
+    verdict = message(
+        "feedback_verdict_significant" if z_result.significant else "feedback_verdict_ns",
+        channel,
+    )
     return AppResponse(
         text=message(
             "feedback",
             channel,
             round_index=game.round_index,
             result_line=result_line,
-            p_value=_fmt_p(z_result.p_value),
+            p_value=fmt_p_value(z_result.p_value),
             verdict=verdict,
             points=score.points,
             user_name=game.user_name,
@@ -124,25 +119,24 @@ def on_summary(channel: str, game: GameSession) -> AppResponse:
     if session is None:
         raise ValueError("Для SUMMARY нужен session_score")
 
-    session_verdict = (
-        "доля значимо отличается от 50%"
-        if session.significant
-        else "отличие от 50% незначимо"
+    session_verdict = message(
+        "summary_verdict_significant" if session.significant else "summary_verdict_ns",
+        channel,
     )
     ci_level = int(round(100.0 * (1.0 - session.alpha)))
     return AppResponse(
         text=message(
             "summary",
             channel,
-            user_name=game.user_name or "Игрок",
+            user_name=game.user_name or message("default_player_name", channel),
             difficulty=difficulty_label(game.difficulty),
             n_correct=session.n_correct,
             rounds_total=session.n_rounds,
-            accuracy=_fmt_pct(session.accuracy),
+            accuracy=fmt_pct(session.accuracy),
             ci_level=ci_level,
-            ci_low=_fmt_pct(session.ci_low),
-            ci_high=_fmt_pct(session.ci_high),
-            session_p=_fmt_p(session.p_value),
+            ci_low=fmt_pct(session.ci_low),
+            ci_high=fmt_pct(session.ci_high),
+            session_p=fmt_p_value(session.p_value),
             session_verdict=session_verdict,
         ),
         buttons=[button("restart", channel)],
@@ -159,7 +153,7 @@ def on_summary_empty(channel: str, user_name: str, difficulty: str) -> AppRespon
         text=message(
             "summary_empty",
             channel,
-            user_name=user_name or "Игрок",
+            user_name=user_name or message("default_player_name", channel),
             difficulty=difficulty_label(difficulty),
         ),
         buttons=[button("restart", channel)],

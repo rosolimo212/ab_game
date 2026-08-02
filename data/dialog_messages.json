@@ -1,5 +1,5 @@
 {
-  "_description": "Тексты ab_game. Плейсхолдеры: {user_name}, {rounds_total}, {round_index}, {difficulty}, {points}, {p_value}, {verdict}, {n_correct}, {accuracy}, {ci_low}, {ci_high}, {session_p}, {session_verdict}.",
+  "_description": "Все user-facing тексты ab_game. Править здесь, не в Python. Пустая строка канала → default. Плейсхолдеры Python: {user_name}, {branch}, …. В chart_hover плейсхолдеры Plotly экранированы удвоением скобок: %{{x}}, %{{y:.2%}} — после format() становятся %{x}.",
   "messages": [
     {
       "id": 1,
@@ -40,7 +40,7 @@
     {
       "id": 5,
       "name": "feedback",
-      "when": "Экран FEEDBACK.",
+      "when": "Экран FEEDBACK (основной текст).",
       "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\nБалл за раунд: {points}.\n\nСправа от графика — целевые и фактические средние.",
       "console": "",
       "telegram": "",
@@ -48,6 +48,69 @@
     },
     {
       "id": 6,
+      "name": "feedback_result_ok",
+      "when": "Подстановка {result_line} при верном ответе.",
+      "default": "верно",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 7,
+      "name": "feedback_result_fail",
+      "when": "Подстановка {result_line} при неверном ответе.",
+      "default": "неверно",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 8,
+      "name": "feedback_verdict_significant",
+      "when": "Вердикт z-теста: эффект значим.",
+      "default": "эффект значим",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 9,
+      "name": "feedback_verdict_ns",
+      "when": "Вердикт z-теста: эффекта нет.",
+      "default": "эффекта нет",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 10,
+      "name": "feedback_stats",
+      "when": "Панель справа от графика на FEEDBACK.",
+      "default": "**Метрики раунда**\n\n**A** — целевое: {target_a}, фактическое: {actual_a}\n\n**B** — целевое: {target_b}, фактическое: {actual_b}\n\n**Разница (факт.)**: {diff_line}\n\n**p-value (z-тест)**: {p_value}",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 11,
+      "name": "feedback_stats_diff",
+      "when": "Строка разницы фактических средних.",
+      "default": "{diff_pct} относительно A",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 12,
+      "name": "feedback_stats_diff_na",
+      "when": "Разница недоступна (среднее A = 0).",
+      "default": "н/д (среднее A = 0)",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 13,
       "name": "summary",
       "when": "Экран SUMMARY с результатами.",
       "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\nWilson CI ({ci_level}%): [{ci_low}; {ci_high}].\nH₀: доля = 50% → p-value = {session_p}, {session_verdict}.",
@@ -56,7 +119,7 @@
       "browser": ""
     },
     {
-      "id": 7,
+      "id": 14,
       "name": "summary_empty",
       "when": "SUMMARY без сыгранных раундов.",
       "default": "{user_name}, игра завершена до первого ответа (сложность: {difficulty}).\n\nСыграйте хотя бы один раунд, чтобы увидеть статистику.",
@@ -65,7 +128,34 @@
       "browser": ""
     },
     {
-      "id": 8,
+      "id": 15,
+      "name": "summary_verdict_significant",
+      "when": "Итог: доля значимо ≠ 50%.",
+      "default": "доля значимо отличается от 50%",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 16,
+      "name": "summary_verdict_ns",
+      "when": "Итог: отличие от 50% незначимо.",
+      "default": "отличие от 50% незначимо",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 17,
+      "name": "default_player_name",
+      "when": "Fallback, если имя пустое.",
+      "default": "Игрок",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 18,
       "name": "browser_page_title",
       "when": "streamlit.set_page_config",
       "default": "ab_game — A/B на глаз",
@@ -74,7 +164,7 @@
       "browser": ""
     },
     {
-      "id": 9,
+      "id": 19,
       "name": "browser_title",
       "when": "Заголовок страницы Streamlit.",
       "default": "A/B на глаз",
@@ -83,10 +173,46 @@
       "browser": ""
     },
     {
-      "id": 10,
+      "id": 20,
       "name": "browser_name_label",
       "when": "Подпись поля имени.",
       "default": "Ваше имя",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 21,
+      "name": "chart_title",
+      "when": "Заголовок Plotly на экране ROUND.",
+      "default": "A/B: дневная доля метрики",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 22,
+      "name": "chart_xaxis",
+      "when": "Подпись оси X графика.",
+      "default": "День",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 23,
+      "name": "chart_yaxis",
+      "when": "Подпись оси Y графика.",
+      "default": "Доля",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 24,
+      "name": "chart_hover",
+      "when": "Hover Plotly. {branch} — Python; %{…} — Plotly (не менять).",
+      "default": "Ветка {branch}<br>День %{{x}}<br>Доля %{{y:.2%}}<br>Числитель %{{customdata[0]}}<br>Знаменатель %{{customdata[1]}}<extra></extra>",
       "console": "",
       "telegram": "",
       "browser": ""

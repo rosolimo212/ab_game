@@ -51,7 +51,7 @@ REQUIRED_EVENTS = [
     "start_screen_visit",
     "button_continue",
     "name_entered",
-    "button_difficulty_normal",
+    "button_difficulty_click",
     "session_start",
     "round_shown",
     "button_guess_effect",

@@ -200,7 +200,11 @@ def test_full_short_session_flow() -> None:
     assert names.count("round_shown") == 2
     assert names.count("guess_submitted") == 2
     assert "game_finished" in names
-    assert "button_difficulty_normal" in names
+    assert "button_difficulty_click" in names
+    diff_clicks = [
+        e for e in logger.events if e["event_name"] == "button_difficulty_click"
+    ]
+    assert diff_clicks[0]["event_parameters"]["difficulty"] == "normal"
 
     shown = [e for e in logger.events if e["event_name"] == "round_shown"]
     params = shown[0]["event_parameters"] or {}

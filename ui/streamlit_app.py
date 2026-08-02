@@ -79,7 +79,9 @@ def run_streamlit(config: dict[str, Any]) -> None:
         _init_session(service, state)
 
     st.title(message("browser_title", "streamlit"))
+    # Текст сценария; отступ перед графиком, чтобы не слипался с Plotly.
     st.markdown(state.get("last_text", ""))
+    st.markdown("")
 
     screen = state.get("screen", Screen.START.value)
     game = state.get("game")
@@ -109,7 +111,8 @@ def run_streamlit(config: dict[str, Any]) -> None:
 
     elif screen == Screen.ROUND.value:
         if game is not None and game.round_data is not None:
-            fig = build_ab_chart(game.round_data)
+            # title="" → подпись из dialog_messages (chart_title)
+            fig = build_ab_chart(game.round_data, title="")
             st.plotly_chart(fig, use_container_width=True)
         cols = st.columns(2)
         with cols[0]:

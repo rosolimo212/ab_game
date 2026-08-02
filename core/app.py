@@ -58,9 +58,6 @@ ACTION_TO_DIFFICULTY = {
 
 BUTTON_CLICK_EVENTS = {
     ACTION_NAME_ENTERED: "button_continue",
-    ACTION_DIFFICULTY_EASY: "button_difficulty_easy",
-    ACTION_DIFFICULTY_NORMAL: "button_difficulty_normal",
-    ACTION_DIFFICULTY_HARD: "button_difficulty_hard",
     ACTION_GUESS_EFFECT: "button_guess_effect",
     ACTION_GUESS_NO_EFFECT: "button_guess_no_effect",
     ACTION_NEXT_ROUND: "button_next_round",
@@ -99,6 +96,24 @@ class AppService:
     def _log_button_click(
         self, identity: UserIdentity, channel: str, action: str
     ) -> None:
+        """
+        Логирует клик по кнопке.
+
+        Выбор сложности — одно событие button_difficulty_click,
+        уровень передаётся в event_parameters.difficulty.
+        """
+        if action in ACTION_TO_DIFFICULTY:
+            self.logger.log_event(
+                identity=identity,
+                event_name="button_difficulty_click",
+                channel=channel,
+                event_parameters={
+                    "action": action,
+                    "difficulty": ACTION_TO_DIFFICULTY[action],
+                },
+            )
+            return
+
         event_name = BUTTON_CLICK_EVENTS.get(action)
         if event_name is None:
             return
