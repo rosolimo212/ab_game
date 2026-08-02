@@ -26,7 +26,7 @@ _STYLE_DIR = Path(__file__).resolve().parents[2] / "style"
 if str(_STYLE_DIR) not in sys.path:
     sys.path.insert(0, str(_STYLE_DIR))
 
-from kotelok_plotly import apply, color  # noqa: E402
+from kotelok_plotly import LOGO_HEIGHT_PX, apply, color  # noqa: E402
 
 # 1×1 белый PNG — подложка-рамка под чёрный логотип (тёмная тема Streamlit).
 _WHITE_PIXEL_URI = (
@@ -35,11 +35,17 @@ _WHITE_PIXEL_URI = (
 )
 
 
-def _add_logo_white_frame(fig: go.Figure, *, pad_ratio: float = 0.18) -> None:
+def _add_logo_white_frame(
+    fig: go.Figure,
+    *,
+    pad_ratio: float = 0.08,
+    trim_bottom_px: float = 5.0,
+) -> None:
     """
-    Белая «плашка» чуть больше эмблемы Kotelok — иначе на тёмном фоне не видно.
+    Тонкая белая плашка чуть больше эмблемы (тёмная тема Streamlit).
 
-    Рисуется layout.image под логотипом (тот же paper-якорь).
+    Повторяет пропорции логотипа + небольшой pad. Снизу короче на
+    ``trim_bottom_px`` (верх совпадает с обычной обводкой).
     """
     images = list(fig.layout.images or ())
     if not images:
@@ -49,35 +55,40 @@ def _add_logo_white_frame(fig: go.Figure, *, pad_ratio: float = 0.18) -> None:
     sy = float(logo.sizey or 0.0)
     if sx <= 0.0 or sy <= 0.0:
         return
-    pad_x = sx * pad_ratio
-    pad_y = sy * pad_ratio
     # Нельзя передавать тот же layout.Image обратно в update_layout —
     # Plotly схлопывает список. Копируем свойства в dict.
+    xanchor = logo.xanchor or "right"
+    yanchor = logo.yanchor or "top"
     logo_dict: dict[str, Any] = {
         "source": logo.source,
         "xref": logo.xref,
         "yref": logo.yref,
         "x": float(logo.x),
-        "xanchor": logo.xanchor or "right",
+        "xanchor": xanchor,
         "y": float(logo.y),
-        "yanchor": logo.yanchor or "top",
+        "yanchor": yanchor,
         "sizex": sx,
         "sizey": sy,
         "sizing": logo.sizing or "contain",
         "layer": "above",
     }
-    # xanchor=right при x≈1: рост sizex уходит влево; сдвиг x вправо
-    # даёт поля с обеих сторон (в т.ч. у края фигуры).
+    fx = sx * (1.0 + 2.0 * pad_ratio)
+    fy_full = sy * (1.0 + 2.0 * pad_ratio)
+    # sizey лого ≈ LOGO_HEIGHT_PX / plot_h → 5 px в paper-долях.
+    trim_b = trim_bottom_px * sy / float(LOGO_HEIGHT_PX)
+    fy = max(fy_full - trim_b, sy * 0.5)
+    cx = float(logo.x) - sx / 2.0
+    frame_top = float(logo.y) + sy * pad_ratio
     frame: dict[str, Any] = {
         "source": _WHITE_PIXEL_URI,
         "xref": logo.xref,
         "yref": logo.yref,
-        "x": float(logo.x) + pad_x,
-        "xanchor": logo.xanchor or "right",
-        "y": float(logo.y) + pad_y,
-        "yanchor": logo.yanchor or "top",
-        "sizex": sx + 2.0 * pad_x,
-        "sizey": sy + 2.0 * pad_y,
+        "x": cx + fx / 2.0,
+        "xanchor": "right",
+        "y": frame_top,
+        "yanchor": "top",
+        "sizex": fx,
+        "sizey": fy,
         "sizing": "stretch",
         "layer": "above",
     }

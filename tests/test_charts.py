@@ -59,8 +59,12 @@ def test_build_ab_chart_two_traces() -> None:
     assert any("Kotelok" in str(getattr(a, "text", "")) for a in annotations)
     images = list(fig.layout.images or ())
     assert len(images) == 2  # белая рамка + эмблема
+    # по ширине — чуть больше лого; по высоте короче снизу на ~5px
     assert float(images[0].sizex) > float(images[1].sizex)
-    assert float(images[0].sizey) > float(images[1].sizey)
+    assert float(images[0].sizex) < float(images[1].sizex) * 1.3
+    pad = 0.08
+    fy_sym = float(images[1].sizey) * (1.0 + 2.0 * pad)
+    assert float(images[0].sizey) < fy_sym
 
 
 def test_build_ab_chart_hover_has_counts() -> None:
