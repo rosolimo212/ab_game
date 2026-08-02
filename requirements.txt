@@ -1,6 +1,8 @@
-# Runtime
-numpy>=1.26,<3
+# Runtime — совместимо с Python 3.8.10 (прод VM рядом с wvs_bot).
+# Не поднимать numpy до >=1.26: у 1.26+ требуется Python >=3.9.
+# Streamlit <1.40: с 1.40 официально отрезан Python 3.8.
+numpy>=1.24,<1.26
 plotly>=5.18,<6
 psycopg2-binary>=2.9,<3
 PyYAML>=6,<7
-streamlit>=1.37,<2
+streamlit>=1.28,<1.40

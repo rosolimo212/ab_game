@@ -45,11 +45,20 @@ streamlit run ui/streamlit_app.py
 
 ## Стек
 
-- Python 3.10+
-- UI: Streamlit (`ui/streamlit_app.py`)
-- Графики: Plotly (`ui/charts.py`) + стиль Kotelok (`style/`)
+- **Python ≥ 3.8** (прод VM: 3.8.10; локально часто 3.10+)
+- UI: Streamlit (`ui/streamlit_app.py`), на проде порт **8503**
+- Графики: Plotly (`ui/charts.py`) + стиль Kotelok в репо (`style/`)
 - Логи: PostgreSQL, БД `communication`, схема `ab_game` (`sql/001_init.sql`)
 - Конфиг: `settings.yaml` (в git) + локальный `secrets.yaml` (не в git)
+
+Зависимости подогнаны под 3.8: `numpy>=1.24,<1.26`, `streamlit>=1.28,<1.40`
+(у `numpy` 1.26+ и у Streamlit 1.40+ Python 3.8 уже не поддерживается — это ограничение
+пакетов, не логики игры).
+
+## Деплой
+
+Пошагово на VM `45.132.18.2` → **https://ab.kotelok.space**:  
+[`deploy/DEPLOY.md`](deploy/DEPLOY.md) (+ unit `deploy/ab-game.service`, nginx `deploy/nginx-ab-game.conf`).
 
 ## Конфиг
 

@@ -13,9 +13,14 @@
 
 Мини-игра в браузере (Streamlit): по графику A/B угадать, есть ли значимый эффект → сразу сверить с **z-тестом**. Баллы за согласие с тестом; в конце сессии — доля верных + CI + p-value (мета-ирония).
 
-Стек: Python · Streamlit · Plotly · PostgreSQL · YAML.
+Стек: **Python ≥ 3.8** · Streamlit · Plotly · PostgreSQL · YAML.  
+Прод: та же VM, что wvs_bot (`45.132.18.2`), URL `https://ab.kotelok.space`, порт Streamlit **8503**.  
+Инструкция: [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
-Наследовать принципы и каркас из `/home/roman/python/kotelok/template`; UI/logging-паттерны — оттуда же (wvs_bot отсутствует).
+`requirements.txt` совместим с Python **3.8.10** (`numpy<1.26`, `streamlit<1.40`).  
+Апгрейд интерпретатора на проде ради ab_game **не нужен**.
+
+Наследовать принципы и каркас из `/home/roman/python/kotelok/template`; UI/logging-паттерны — оттуда же (и из wvs_bot по деплою).
 
 ---
 
@@ -115,6 +120,7 @@ testing:
 core/          # конфиг, модели, generator, stats, scoring, app, brain, logging
 ui/            # charts, helpers, streamlit_app
 style/         # kotelok Plotly (kotelok_plotly.py + big_kettler.png)
+deploy/        # DEPLOY.md, systemd, nginx для ab.kotelok.space
 data/dialog_messages.json
 sql/001_init.sql
 business_checks.py

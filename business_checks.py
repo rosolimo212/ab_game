@@ -72,6 +72,9 @@ REQUIRED_FILES = [
     "ui/charts.py",
     "style/kotelok_plotly.py",
     "style/big_kettler.png",
+    "deploy/DEPLOY.md",
+    "deploy/ab-game.service",
+    "deploy/nginx-ab-game.conf",
     "data/dialog_messages.json",
     "sql/001_init.sql",
 ]
