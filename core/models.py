@@ -3,10 +3,10 @@
 Общие структуры данных ядра ab_game.
 
 Цель:
-    Единые типы для дневных точек метрики, веток A/B, раунда и результата z-теста.
+    Единые типы для дневных точек метрики, веток A/B, раунда, z-теста и баллов.
 
 Выход:
-    dataclass-объекты без I/O — ими обмениваются генератор, stats и (позже) UI/app.
+    dataclass-объекты без I/O — ими обмениваются генератор, stats, scoring и UI.
 """
 
 from __future__ import annotations
@@ -102,3 +102,38 @@ class ZTestResult:
     trials_b: int
     rate_a: float
     rate_b: float
+
+
+@dataclass(frozen=True)
+class RoundScore:
+    """
+    Балл одного раунда: согласие догадки с вердиктом z-теста.
+
+    points — 1 при совпадении guess_has_effect с test_significant, иначе 0.
+    p_value — p-value z-теста раунда (для фидбека), не влияет на points напрямую.
+    """
+
+    guess_has_effect: bool
+    test_significant: bool
+    points: int
+    p_value: float
+
+
+@dataclass(frozen=True)
+class SessionScore:
+    """
+    Итог сессии: доля верных + Wilson CI + p-value против случайности (p=0.5).
+
+    Мета-ирония: к «навыку» игрока применяем тот же стат-подход, что и к A/B.
+    significant — True, если доля верных значимо отличается от 0.5 при заданном alpha.
+    """
+
+    n_rounds: int
+    n_correct: int
+    accuracy: float
+    ci_low: float
+    ci_high: float
+    p_value: float
+    z_stat: float
+    significant: bool
+    alpha: float

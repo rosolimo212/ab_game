@@ -11,8 +11,8 @@
 | 1 | Каркас + settings / secrets | **готово** |
 | 2 | Генератор биномиальных рядов | **готово** |
 | 3 | Z-тест двух пропорций | **готово** |
-| 4 | Scoring | не начат |
-| 5 | Plotly | не начат |
+| 4 | Scoring | **готово** |
+| 5 | Plotly | **готово** |
 | 6 | Streamlit / сценарий | не начат |
 | 7 | Postgres (`ab_game`) | не начат |
 | 8 | business_checks + pre_commit | не начат |
@@ -21,7 +21,7 @@
 
 ## Запуск тестов
 
-Тесты: `tests/test_config.py`, `tests/test_generator.py`, `tests/test_stats.py`.
+Тесты: `tests/test_config.py`, `tests/test_generator.py`, `tests/test_stats.py`, `tests/test_scoring.py`, `tests/test_charts.py`.
 
 ```bash
 # из корня репозитория
@@ -36,13 +36,13 @@ python3 -m venv .venv
 ./run_tests.sh
 ```
 
-Сейчас ожидается: **14 passed**.
+Сейчас ожидается: **24 passed**.
 
 ## Стек
 
 - Python 3.10+
 - UI: Streamlit (ещё не подключён)
-- Графики: Plotly (ещё не подключён)
+- Графики: Plotly (`ui/charts.py`)
 - Логи: PostgreSQL, БД `communication`, схема `ab_game`
 - Конфиг: `settings.yaml` (в git) + локальный `secrets.yaml` (не в git)
 
@@ -66,16 +66,18 @@ testing:
 - `core/config.py` — merge settings ⊕ secrets  
 - `core/generator.py` — `generate_round` → `RoundData`  
 - `core/stats.py` — pooled z-тест пропорций  
-- `core/models.py` — `DayPoint`, `BranchSeries`, `RoundData`, `ZTestResult`
+- `core/scoring.py` — балл раунда + итог сессии (доля, Wilson CI, p vs 0.5)  
+- `core/models.py` — `DayPoint`, `BranchSeries`, `RoundData`, `ZTestResult`, `RoundScore`, `SessionScore`  
+- `ui/charts.py` — `build_ab_chart(round_data)` → Plotly Figure  
 
 ## Правила игры (MVP)
 
 - 20 раундов, 2 ветки, биномиальная доля ∈ [0, 1], по умолчанию 14 дней.
 - Правильный ответ = согласие с z-тестом при α = 5% (не флаг эффекта генератора).
 - Генерация эффекта: 50% null / 50% сдвиг `±20%` от `base_p`; шум из settings.
-- Фидбек сразу; итог = доля верных + CI + p-value.
+- Фидбек сразу; итог = доля верных + Wilson CI + p-value против случайности (0.5).
 - График: метрика за день; hover — rate, числитель, знаменатель.
 
 ## Дальше
 
-4. Scoring → 5. Plotly → 6. Streamlit → 7. Postgres → 8. business_checks
+6. Streamlit / AppService → 7. Postgres → 8. business_checks

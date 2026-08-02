@@ -67,11 +67,19 @@ testing:
 | эффекта нет | `p_value >= 0.05` | 1 |
 | иначе | | 0 |
 
+**Итог сессии** (`core/scoring.py`):
+
+- `accuracy` = доля раундов с `points=1`
+- Wilson CI для доли при `alpha` из settings
+- z-тест H0: accuracy = 0.5 → `p_value` / `significant` (мета-ирония)
+
 **Генератор** (`core/generator.py`): биномиальная доля [0,1]; 2 ветки; с вероятностью 0.5 сдвиг B: `base_p * (1 + U(-0.2,+0.2))`; иначе тот же `p`; дневной `noise`; дефолт 14 дней; `n_per_day` из settings.
 
 **Стат-тест** (`core/stats.py`): pooled z-тест двух пропорций по сумме дней; `alpha=0.05`.
 
-**UX (ещё не в коде):** 20 раундов; фидбек сразу; итог = доля верных + CI + p-value; Plotly — метрика за день, hover: rate/числитель/знаменатель.
+**График** (`ui/charts.py`): Plotly — дневная доля; hover: rate / числитель / знаменатель; `build_ab_chart(round_data)`.
+
+**UX (ещё не в коде):** 20 раундов; фидбек сразу; Streamlit показывает график + кнопки догадки + итог сессии.
 
 **Postgres:** БД `communication`, схема `ab_game`.
 
@@ -80,15 +88,17 @@ testing:
 ## Структура сейчас
 
 ```
-core/config.py models.py generator.py stats.py
-ui/                 # заглушка
-data/ sql/          # placeholder
+core/config.py models.py generator.py stats.py scoring.py
+ui/charts.py          # Plotly Figure из RoundData
+data/ sql/            # placeholder
 tests/
   test_config.py
   test_generator.py
   test_stats.py
-settings.yaml       # в git
-run_tests.sh        # ./run_tests.sh
+  test_scoring.py
+  test_charts.py
+settings.yaml         # в git
+run_tests.sh          # ./run_tests.sh
 requirements.txt
 requirements-dev.txt
 ```
@@ -110,11 +120,11 @@ requirements-dev.txt
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-# минимум для ядра: numpy PyYAML pytest
+# минимум для ядра: numpy PyYAML plotly pytest
 ./run_tests.sh
 ```
 
-Ожидаемо: **14 passed** (config, generator, stats).
+Ожидаемо: **24 passed** (config, generator, stats, scoring, charts).
 
 ---
 
@@ -125,21 +135,17 @@ python3 -m venv .venv
 | 1 | Каркас + settings/secrets split | **готово** |
 | 2 | Генератор | **готово** |
 | 3 | Z-тест | **готово** |
-| 4 | Scoring раунда/сессии | не начат |
-| 5 | Plotly | не начат |
+| 4 | Scoring раунда/сессии | **готово** |
+| 5 | Plotly | **готово** |
 | 6 | AppService + Streamlit | не начат |
 | 7 | Postgres logging | не начат |
 | 8 | business_checks + pre_commit | не начат |
 
-Следующий по плану: **4. Scoring**.
+Следующий по плану: **6. AppService + Streamlit**.
 
 ---
 
 ## Локальные незакоммиченные правки (на момент записи)
 
-- `.gitignore`: `*.yaml` / `!settings.yaml`
-- удалён из индекса/диска `secrets.example.yaml` (шаблон перенесён в этот файл и README)
-- добавлен `run_tests.sh`
-- обновлены тесты конфига без файла-примера секретов
-
-Если `git status` показывает эти изменения — закоммитить **только по просьбе пользователя**.
+Возможно есть незакоммиченные изменения этапов 1–5 и инфраструктуры (gitignore, run_tests.sh и т.д.).  
+Коммитить **только по просьбе пользователя**.
