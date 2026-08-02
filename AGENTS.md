@@ -77,6 +77,8 @@ testing:
 
 `base_p` раунда ∈ [`base_p_min`, `base_p_max`]; hard не должен давать «эффекта нет» почти всегда (см. `game.difficulties.hard`).
 
+Стиль графиков: `kotelok_plotly.apply` из sibling `../style/` (как в `stl.ipynb`); `paper`/`plot` bg — прозрачные.
+
 | Action | Смысл |
 |--------|--------|
 | `name_entered` | Сохранить имя → DIFFICULTY |

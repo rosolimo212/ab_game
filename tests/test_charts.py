@@ -51,6 +51,12 @@ def test_build_ab_chart_two_traces() -> None:
     # легенда под графиком
     assert fig.layout.legend.y < 0
     assert ".2%" in str(fig.layout.yaxis.tickformat)
+    # kotelok + прозрачный фон (Streamlit)
+    assert "rgba(0,0,0,0)" in str(fig.layout.paper_bgcolor).replace(" ", "")
+    assert "rgba(0,0,0,0)" in str(fig.layout.plot_bgcolor).replace(" ", "")
+    assert fig.layout.xaxis.showgrid is False
+    annotations = list(fig.layout.annotations or ())
+    assert any("Kotelok" in str(getattr(a, "text", "")) for a in annotations)
 
 
 def test_build_ab_chart_hover_has_counts() -> None:

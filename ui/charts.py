@@ -5,13 +5,15 @@ Plotly-график двух веток A/B для одного раунда.
 Цель:
     По RoundData построить фигуру: дневная доля по оси Y, день — по X.
     Ось Y: всегда от 0 до max(rate)*1.15.
-    Легенда — под графиком (не пересекается с заголовком/текстом сверху).
+    Стиль — kotelok (`../style/kotelok_plotly.py`), фон прозрачный (Streamlit).
 
 Подписи осей и hover — из data/dialog_messages.json.
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
 
 import plotly.graph_objects as go
@@ -19,10 +21,17 @@ import plotly.graph_objects as go
 from core.messages import message
 from core.models import BranchSeries, RoundData
 
+# Sibling: /home/roman/python/kotelok/style (как в stl.ipynb).
+_STYLE_DIR = Path(__file__).resolve().parents[2] / "style"
+if str(_STYLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_STYLE_DIR))
+
+from kotelok_plotly import apply, color  # noqa: E402
+
 
 def _branch_trace(
     branch: BranchSeries,
-    color: str,
+    color_hex: str,
     *,
     channel: str,
 ) -> go.Scatter:
@@ -40,8 +49,8 @@ def _branch_trace(
         y=rates,
         mode="lines+markers",
         name=branch.name,
-        line={"color": color, "width": 2},
-        marker={"size": 7},
+        line={"color": color_hex, "width": 3},
+        marker={"size": 7, "color": color_hex},
         customdata=list(zip(nums, dens)),
         hovertemplate=hover,
     )
@@ -75,34 +84,21 @@ def build_ab_chart(
     :param round_data: данные раунда
     :param title: заголовок; "" — взять chart_title из JSON; None — без title
     :param channel: канал для текстов из dialog_messages.json
-    :return: Figure
+    :return: Figure в стиле kotelok, с прозрачным фоном
     """
     fig = go.Figure()
     fig.add_trace(
-        _branch_trace(round_data.branch_a, color="#1f77b4", channel=channel)
+        _branch_trace(round_data.branch_a, color_hex=color(0), channel=channel)
     )
     fig.add_trace(
-        _branch_trace(round_data.branch_b, color="#ff7f0e", channel=channel)
+        _branch_trace(round_data.branch_b, color_hex=color(1), channel=channel)
     )
 
     y0, y1 = y_axis_range(round_data)
-    # Легенда снизу: не перекрывает markdown над графиком и title сверху.
     layout: dict[str, Any] = {
         "xaxis_title": message("chart_xaxis", channel),
         "yaxis_title": message("chart_yaxis", channel),
-        "yaxis": {
-            "range": [y0, y1],
-            "tickformat": ".2%",
-            "rangemode": "tozero",
-        },
-        "legend": {
-            "orientation": "h",
-            "yanchor": "top",
-            "y": -0.22,
-            "xanchor": "left",
-            "x": 0,
-        },
-        "margin": {"l": 56, "r": 24, "t": 48, "b": 96},
+        "showlegend": True,
         "hovermode": "x unified",
     }
     if title is None:
@@ -112,4 +108,18 @@ def build_ab_chart(
     else:
         layout["title"] = title
     fig.update_layout(**layout)
+
+    # Как в style/stl.ipynb: apply на готовую фигуру (без фиксации width —
+    # Streamlit тянет use_container_width).
+    apply(fig)
+
+    # Игровые оси + прозрачный фон поверх белого из шаблона kotelok.
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        hovermode="x unified",
+    )
+    fig.update_yaxes(range=[y0, y1], tickformat=".2%", rangemode="tozero")
+    fig.update_xaxes(title_text=message("chart_xaxis", channel))
+    fig.update_yaxes(title_text=message("chart_yaxis", channel))
     return fig
