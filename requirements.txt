@@ -1,0 +1,6 @@
+# Runtime
+numpy>=1.26,<3
+plotly>=5.18,<6
+psycopg2-binary>=2.9,<3
+PyYAML>=6,<7
+streamlit>=1.37,<2
