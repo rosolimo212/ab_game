@@ -58,7 +58,7 @@ streamlit run ui/streamlit_app.py
 ## Деплой
 
 Пошагово на VM `45.132.18.2` → **https://ab.kotelok.space**:  
-[`deploy/DEPLOY.md`](deploy/DEPLOY.md) (+ unit `deploy/ab-game.service`, nginx `deploy/nginx-ab-game.conf`).
+[`deploy/DEPLOY.md`](deploy/DEPLOY.md) — **чек-лист** (сделано / исправить / осталось) + unit/nginx.
 
 ## Конфиг
 

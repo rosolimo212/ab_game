@@ -5,10 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+# Как у wvs-streamlit: User=root. status=217/USER = указан несуществующий User=.
 User=root
-WorkingDirectory=/root/python/ab_game
+WorkingDirectory=/opt/kotelok/ab_game
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/root/python/ab_game/.venv/bin/streamlit run ui/streamlit_app.py \
+ExecStart=/opt/kotelok/ab_game/.venv/bin/streamlit run ui/streamlit_app.py \
   --server.address=127.0.0.1 \
   --server.port=8503 \
   --server.headless=true \

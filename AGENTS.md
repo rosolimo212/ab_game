@@ -14,8 +14,8 @@
 Мини-игра в браузере (Streamlit): по графику A/B угадать, есть ли значимый эффект → сразу сверить с **z-тестом**. Баллы за согласие с тестом; в конце сессии — доля верных + CI + p-value (мета-ирония).
 
 Стек: **Python ≥ 3.8** · Streamlit · Plotly · PostgreSQL · YAML.  
-Прод: та же VM, что wvs_bot (`45.132.18.2`), URL `https://ab.kotelok.space`, порт Streamlit **8503**.  
-Инструкция: [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
+Прод: та же VM, что wvs_bot (`45.132.18.2`), путь `/opt/kotelok/ab_game`, URL `https://ab.kotelok.space`, порт Streamlit **8503**.
+Инструкция с чек-листом: [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
 
 `requirements.txt` совместим с Python **3.8.10** (`numpy<1.26`, `streamlit<1.40`).  
 Апгрейд интерпретатора на проде ради ab_game **не нужен**.
