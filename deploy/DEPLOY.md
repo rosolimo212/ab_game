@@ -30,31 +30,17 @@
 
 ### Исправить сейчас (блокеры)
 
-- [ ] **Порт:** не запускать на 8501 (`Port 8501 is already in use`). Только **8503**
-- [ ] **systemd `217/USER`:** в `/etc/systemd/system/ab-game.service` должен быть существующий ОС-юзер  
-      → ставь `User=root` (как wvs), пути `/opt/kotelok/ab_game`, порт **8503**  
-      → затем `daemon-reload` + `restart` + `status` (см. §3)
-- [ ] Smoke вручную на 8503 без ошибки порта:
-
-```bash
-cd /opt/kotelok/ab_game
-.venv/bin/streamlit run ui/streamlit_app.py \
-  --server.address 127.0.0.1 \
-  --server.port 8503 \
-  --server.headless true \
-  --browser.gatherUsageStats false
-# Ctrl+C после проверки
-```
+- [ ] **Порт:** не запускать на 8501. Только **8503**
+- [ ] **Схема Postgres:** ошибка `relation "ab_game.users" does not exist` → один раз выполнить init SQL (§1б)
+- [ ] **systemd `217/USER`:** `User=root`, пути к коду, порт **8503** → `daemon-reload` + `restart` (§2)
+- [ ] Smoke на 8503 (§1)
 
 ### Ещё предстоит
 
-- [ ] DNS: A-запись `ab` → `45.132.18.2`; проверка `dig +short ab.kotelok.space`
-- [ ] `settings.yaml` на сервере: `app.debug_mode: false`
-- [ ] `secrets.yaml` (если нужны логи в PG): `logging_enabled` + host/user/password; схема `ab_game` через `sql/001_init.sql` при необходимости
-- [ ] systemd: unit активен (`systemctl is-active ab-game` → `active`), автозапуск `enable`
-- [ ] Nginx: сайт `ab-game` → proxy на `127.0.0.1:8503` (§4)
-- [ ] HTTPS: `certbot --nginx -d ab.kotelok.space`
-- [ ] Финальная проверка: `curl -sI https://ab.kotelok.space` и открытие в браузере
+- [ ] DNS: A-запись `ab` → `45.132.18.2`
+- [ ] `settings.yaml`: `app.debug_mode: false`
+- [ ] Nginx site + certbot (§3)
+- [ ] Финал: `https://ab.kotelok.space` открывается без traceback
 
 ### Готово, когда
 
@@ -82,8 +68,18 @@ pip install -r requirements.txt
 ```bash
 nano secrets.yaml    # образец в AGENTS.md / README
 nano settings.yaml   # debug_mode: false; logging_enabled по желанию
-# один раз при логировании:
-# psql -h localhost -U roman -d communication -f sql/001_init.sql
+```
+
+### 1б. Схема Postgres `ab_game` (обязательно, если logging_enabled)
+
+Иначе в браузере: `relation "ab_game.users" does not exist`.
+
+```bash
+# подставь реальный путь к проекту на VM:
+cd /root/python/ab_game    # у тебя сейчас так (или /opt/kotelok/ab_game)
+psql -h localhost -U roman -d communication -f sql/001_init.sql
+psql -h localhost -U roman -d communication -c '\dt ab_game.*'
+systemctl restart ab-game
 ```
 
 ---
@@ -109,18 +105,32 @@ journalctl -u ab-game -n 50 --no-pager
 
 ---
 
-## 3. Nginx + HTTPS
+## 3. Nginx + HTTPS (конкретно по шагам)
+
+1. Убедись, что Streamlit уже слушает **8503** (`ss -lptn | grep 8503`).
+2. Скопируй конфиг и включи сайт:
 
 ```bash
-cp /opt/kotelok/ab_game/deploy/nginx-ab-game.conf /etc/nginx/sites-available/ab-game
-ln -sf /etc/nginx/sites-available/ab-game /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
+# путь к репо подставь свой
+cp /root/python/ab_game/deploy/nginx-ab-game.conf /etc/nginx/sites-available/ab-game
+# или: cp /opt/kotelok/ab_game/deploy/nginx-ab-game.conf ...
 
-# когда DNS уже указывает на эту VM:
+ln -sf /etc/nginx/sites-available/ab-game /etc/nginx/sites-enabled/ab-game
+nginx -t
+systemctl reload nginx
+```
+
+3. В этом файле ничего про User нет. Важно только:
+   - `server_name ab.kotelok.space;`
+   - `proxy_pass http://127.0.0.1:8503;`
+4. DNS уже должен отдавать IP этой VM (`dig +short ab.kotelok.space`).
+5. Сертификат:
+
+```bash
 certbot --nginx -d ab.kotelok.space
 ```
 
-Наружу открывать только 80/443; **8503** — только localhost.
+6. Проверка: `curl -sI https://ab.kotelok.space`
 
 ---
 
@@ -141,6 +151,7 @@ systemctl status ab-game
 
 | Симптом | Что делать |
 |---------|------------|
+| `relation "ab_game.users" does not exist` | §1б: `psql ... -f sql/001_init.sql` |
 | `Port 8501 is already in use` | Использовать **8503**, не 8501/8502 |
 | `status=217/USER` | Несуществующий `User=` в unit → `User=root` |
 | `No matching distribution for numpy>=1.26` | `git pull` + актуальный `requirements.txt` |

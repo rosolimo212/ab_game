@@ -82,7 +82,8 @@ testing:
 
 `base_p` раунда ∈ [`base_p_min`, `base_p_max`]; hard не должен давать «эффекта нет» почти всегда (см. `game.difficulties.hard`).
 
-Стиль графиков: vendored `style/kotelok_plotly.py` + `style/big_kettler.png`; `paper`/`plot` bg — прозрачные.
+Стиль графиков: vendored `style/kotelok_plotly.py` + `style/big_kettler.png`; `paper`/`plot` bg — прозрачные.  
+Прогрев Plotly.js: `ui/plotly_warmup.py` — через ~1с после открытия сессии (пока пользователь на START).
 
 | Action | Смысл |
 |--------|--------|

@@ -36,6 +36,7 @@ from ui.helpers import (
     get_identity,
     init_user_identity,
 )
+from ui.plotly_warmup import warmup_plotly_js_delayed
 
 
 def _init_session(service: Any, state: Any) -> None:
@@ -190,6 +191,9 @@ def run_streamlit(config: dict[str, Any]) -> None:
 
     if debug_mode:
         _render_debug_panel(state)
+
+    # Прогрев Plotly.js ~через 1с после открытия (не блокирует первый paint START).
+    warmup_plotly_js_delayed(state, delay_sec=1.0)
 
 
 if __name__ == "__main__":
