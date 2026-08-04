@@ -70,3 +70,22 @@ class TeeEventLogger(EventLogger):
 
     def get_user_profile(self, identity: UserIdentity) -> dict[str, Any] | None:
         return self._inner.get_user_profile(identity)
+
+    def log_round_parameters(
+        self,
+        identity: UserIdentity,
+        parameters: dict[str, Any],
+        *,
+        played_at: datetime | None = None,
+    ) -> None:
+        self._inner.log_round_parameters(
+            identity, parameters, played_at=played_at
+        )
+        self._sink.append(
+            {
+                "event_name": "round_parameters",
+                "channel": "",
+                "event_parameters": parameters,
+                "external_user_id": identity.external_user_id,
+            }
+        )

@@ -197,3 +197,60 @@ class PostgresLogger(EventLogger):
                         params_json,
                     ),
                 )
+
+    def log_round_parameters(
+        self,
+        identity: UserIdentity,
+        parameters: dict[str, Any],
+        *,
+        played_at: datetime | None = None,
+    ) -> None:
+        event_time = played_at or datetime.now()
+        table_name = f"{self.schema}.round_parameters"
+        series_json = json.dumps(parameters["series"], ensure_ascii=False)
+        query = f"""
+            INSERT INTO {table_name} (
+                played_at,
+                user_id,
+                internal_user_id,
+                external_user_id,
+                round_index,
+                difficulty,
+                noise,
+                base_p,
+                target_a,
+                target_b,
+                want_effect,
+                p_value,
+                significant,
+                aligned,
+                calibrate_steps,
+                series
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb
+            )
+        """
+        with postgres_connection(self.logging_config) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    query,
+                    (
+                        event_time,
+                        identity.user_id,
+                        identity.internal_user_id,
+                        identity.external_user_id,
+                        int(parameters["round_index"]),
+                        str(parameters["difficulty"]),
+                        float(parameters["noise"]),
+                        float(parameters["base_p"]),
+                        float(parameters["target_a"]),
+                        float(parameters["target_b"]),
+                        bool(parameters["want_effect"]),
+                        float(parameters["p_value"]),
+                        bool(parameters["significant"]),
+                        bool(parameters["aligned"]),
+                        int(parameters["calibrate_steps"]),
+                        series_json,
+                    ),
+                )

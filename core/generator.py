@@ -3,26 +3,20 @@
 Генерация временных рядов биномиальной метрики для одного раунда A/B.
 
 Цель:
-    По параметрам из конфига (или явных аргументов) построить две ветки:
-    дневные числитель/знаменатель и долю за день.
+    По параметрам из конфига построить две ветки и явный флаг has_effect
+    (должен ли z-тест показать значимость), затем подогнать p_B под этот флаг.
 
-Правила MVP:
+Правила:
     - Метрика ∈ [0, 1], биномиальная доля.
     - base_p раунда: Uniform(base_p_min, base_p_max), иначе фиксированный base_p.
-    - С вероятностью effect_probability ветка B получает сдвиг p:
-      Uniform(-effect_relative_range, +effect_relative_range) * base_p.
-    - Иначе p_B = p_A = base_p.
-    - На каждый день: истинная доля с относительным шумом, затем Binomial(n, p_day).
+    - С вероятностью effect_probability выставляется want_effect=True и сдвиг B.
+    - Калибровка: если флаг и вердикт z-теста расходятся — двигаем |p_B−p_A|.
 
 Вход:
-    Параметры game-секции и опциональный numpy Generator (воспроизводимость).
+    Параметры game-секции и опциональный numpy Generator.
 
 Выход:
-    RoundData с ветками A и B.
-
-Риски:
-    При base_p близком к 0 или 1 и большом noise/effect клип в [0, 1] сжимает эффект.
-    has_effect — про сдвиг в генераторе, не про значимость z-теста.
+    RoundData (после калибровки has_effect ≈ z_test.significant).
 """
 
 from __future__ import annotations
@@ -61,15 +55,17 @@ def _resolve_branch_b_p(
     rng: np.random.Generator,
 ) -> tuple[float, bool]:
     """
-    Выбирает истинный p для ветки B и флаг has_effect.
+    Выбирает истинный p для ветки B и явный флаг want_effect (has_effect).
 
-    :return: (p_b, has_effect)
+    :return: (p_b, want_effect)
     """
     if rng.random() >= effect_probability:
         return base_p, False
 
-    # Равномерный относительный сдвиг ± effect_relative_range от base_p.
     relative = rng.uniform(-effect_relative_range, effect_relative_range)
+    # Нулевой сдвиг при «эффекте» бесполезен для калибровки — чуть отодвинем.
+    if abs(relative) < 1e-9:
+        relative = effect_relative_range * (1.0 if rng.random() < 0.5 else -1.0)
     p_b = _clip_probability(base_p * (1.0 + relative))
     return p_b, True
 
@@ -106,12 +102,15 @@ def _simulate_branch(
 def generate_round(
     game_cfg: Mapping[str, Any],
     rng: np.random.Generator | None = None,
+    *,
+    calibrate: bool = True,
 ) -> RoundData:
     """
     Генерирует один раунд A/B по секции game конфига.
 
     :param game_cfg: словарь параметров (как config['game'] после resolve_game_cfg)
     :param rng: генератор случайных чисел; если None — создаётся новый
+    :param calibrate: подогнать p_B под флаг has_effect через z-тест
     :return: RoundData
     """
     if rng is None:
@@ -124,7 +123,7 @@ def generate_round(
     effect_probability = float(game_cfg["effect_probability"])
     effect_relative_range = float(game_cfg["effect_relative_range"])
 
-    p_b, has_effect = _resolve_branch_b_p(
+    p_b, want_effect = _resolve_branch_b_p(
         base_p=base_p,
         effect_probability=effect_probability,
         effect_relative_range=effect_relative_range,
@@ -148,9 +147,15 @@ def generate_round(
         rng=rng,
     )
 
-    return RoundData(
+    round_data = RoundData(
         branch_a=branch_a,
         branch_b=branch_b,
-        has_effect=has_effect,
+        has_effect=want_effect,
         base_p=base_p,
+        calibrate_steps=0,
     )
+    if calibrate:
+        from core.calibrate import calibrate_round_to_effect_flag
+
+        round_data = calibrate_round_to_effect_flag(round_data, game_cfg, rng)
+    return round_data

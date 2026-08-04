@@ -109,9 +109,13 @@ testing:
 | эффекта нет | `p_value >= 0.05` | 1 |
 | иначе | | 0 |
 
-**Итог сессии:** accuracy + Wilson CI + z-тест H0: p=0.5.
+**Генератор** (`core/generator.py` + `core/calibrate.py`): биномиальная доля; явный флаг
+`has_effect` (~`effect_probability`); затем калибровка: если флаг «эффект», а z-тест ещё
+не значим — увеличиваем |p_B−p_A| и пересэмплируем B; если флаг «нет» при значимом тесте —
+сближаем p_B к p_A. Scoring по-прежнему только по z-тесту.
 
-**Postgres:** БД `communication`, схема `ab_game` (`sql/001_init.sql`).
+**Лог раунда:** таблица `ab_game.round_parameters` (series JSON, means, noise, want_effect, p_value, …).  
+Миграция на уже развёрнутой БД: `psql … -f sql/002_round_parameters.sql`.
 
 ---
 
@@ -124,6 +128,7 @@ style/         # kotelok Plotly (kotelok_plotly.py + big_kettler.png)
 deploy/        # DEPLOY.md, systemd, nginx для ab.kotelok.space
 data/dialog_messages.json
 sql/001_init.sql
+sql/002_round_parameters.sql
 business_checks.py
 pre_commit_check.sh
 run_tests.sh
@@ -139,7 +144,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 56 passed
+./run_tests.sh              # слой 1: pytest → 60 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 

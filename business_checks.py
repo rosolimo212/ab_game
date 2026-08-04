@@ -77,6 +77,7 @@ REQUIRED_FILES = [
     "deploy/nginx-ab-game.conf",
     "data/dialog_messages.json",
     "sql/001_init.sql",
+    "sql/002_round_parameters.sql",
 ]
 
 MAX_LATENCY_SEC = 8.0
@@ -159,6 +160,25 @@ class MemoryLogger:
                 "event_name": event_name,
                 "channel": channel,
                 "event_parameters": event_parameters,
+            }
+        )
+
+    def log_round_parameters(
+        self,
+        identity: UserIdentity,
+        parameters: dict[str, Any],
+        *,
+        played_at: datetime | None = None,
+    ) -> None:
+        _ = played_at
+        self.events.append(
+            {
+                "user_id": identity.user_id,
+                "internal_user_id": identity.internal_user_id,
+                "external_user_id": identity.external_user_id,
+                "event_name": "round_parameters",
+                "channel": "db",
+                "event_parameters": parameters,
             }
         )
 
@@ -483,6 +503,11 @@ def check_sql_init_mentions_ab_game() -> None:
         raise AssertionError("001_init.sql не создаёт схему ab_game")
     if "ab_game.users" not in sql or "ab_game.events" not in sql:
         raise AssertionError("001_init.sql без таблиц users/events")
+    if "ab_game.round_parameters" not in sql:
+        raise AssertionError("001_init.sql без round_parameters")
+    sql2 = (ROOT / "sql" / "002_round_parameters.sql").read_text(encoding="utf-8")
+    if "round_parameters" not in sql2:
+        raise AssertionError("002_round_parameters.sql пустой/битый")
 
 
 def run_all_checks() -> None:

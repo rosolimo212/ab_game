@@ -116,16 +116,19 @@ class BranchSeries:
 @dataclass(frozen=True)
 class RoundData:
     """
-    Данные одного раунда игры: две ветки и флаг эффекта в генераторе.
+    Данные одного раунда игры: две ветки и явный флаг эффекта.
 
-    has_effect — генератор сдвинул p ветки B (диагностика; scoring смотрит только на z-тест).
-    base_p — базовый p из конфига / генеральной совокупности.
+    has_effect — целевой флаг раунда: должен ли z-тест быть значимым
+    (после калибровки генератора). Scoring по-прежнему смотрит на z-тест.
+    base_p — базовый p ветки A / генеральной совокупности.
+    calibrate_steps — сколько раз подгоняли |p_B−p_A| под флаг (0 = сразу совпало).
     """
 
     branch_a: BranchSeries
     branch_b: BranchSeries
     has_effect: bool
     base_p: float
+    calibrate_steps: int = 0
 
 
 @dataclass(frozen=True)

@@ -41,7 +41,7 @@ streamlit run ui/streamlit_app.py
 ./pre_commit_check.sh
 ```
 
-Ожидается: **56 passed** (pytest) и **15 OK** (business_checks).
+Ожидается: **60 passed** (pytest) и **15 OK** (business_checks).
 
 ## Стек
 

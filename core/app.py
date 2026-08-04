@@ -34,6 +34,7 @@ from core.difficulty import (
 from core.export_csv import session_rounds_to_csv_rows
 from core.generator import generate_round
 from core.logging.base import EventLogger
+from core.round_params import round_parameters_row
 from core.models import (
     ACTION_DIFFICULTY_EASY,
     ACTION_DIFFICULTY_HARD,
@@ -145,8 +146,33 @@ class AppService:
             "mean_b": round_data.branch_b.pooled_rate,
             "target_a": round_data.branch_a.true_p,
             "target_b": round_data.branch_b.true_p,
+            "want_effect": round_data.has_effect,
             "p_value": z_result.p_value,
+            "significant": z_result.significant,
+            "calibrate_steps": round_data.calibrate_steps,
         }
+
+    def _persist_round_parameters(
+        self,
+        identity: UserIdentity,
+        round_index: int,
+        round_data: RoundData,
+        *,
+        noise: float,
+        difficulty: str,
+    ) -> None:
+        """Пишет строку в ab_game.round_parameters (и дублирует ключи в round_shown)."""
+        z_result = z_test_round(round_data, alpha=self._alpha())
+        self.logger.log_round_parameters(
+            identity,
+            round_parameters_row(
+                round_data,
+                z_result,
+                round_index=round_index,
+                difficulty=difficulty,
+                noise=noise,
+            ),
+        )
 
     def handle_start(
         self,
@@ -340,6 +366,9 @@ class AppService:
                 1, round_data, noise=noise, difficulty=difficulty
             ),
         )
+        self._persist_round_parameters(
+            identity, 1, round_data, noise=noise, difficulty=difficulty
+        )
         return on_round(channel, game)
 
     def _require_game(self, payload: dict[str, Any]) -> GameSession:
@@ -504,5 +533,12 @@ class AppService:
                 noise=nxt.noise,
                 difficulty=nxt.difficulty,
             ),
+        )
+        self._persist_round_parameters(
+            identity,
+            next_index,
+            round_data,
+            noise=nxt.noise,
+            difficulty=nxt.difficulty,
         )
         return on_round(channel, nxt)

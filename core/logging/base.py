@@ -42,6 +42,20 @@ class EventLogger(ABC):
     ) -> None:
         """Записать событие в events."""
 
+    def log_round_parameters(
+        self,
+        identity: UserIdentity,
+        parameters: dict[str, Any],
+        *,
+        played_at: datetime | None = None,
+    ) -> None:
+        """
+        Записать параметры раунда в round_parameters (график, means, noise, p-value).
+
+        По умолчанию no-op (NoopLogger / тесты без БД).
+        """
+        return None
+
     def get_user_profile(self, identity: UserIdentity) -> dict[str, Any] | None:
         """Профиль: user_name, registration_date. По умолчанию None."""
         return None

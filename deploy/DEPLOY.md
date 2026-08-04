@@ -38,7 +38,7 @@
 ### Ещё предстоит
 
 - [ ] DNS: A-запись `ab` → `45.132.18.2`
-- [ ] `settings.yaml`: `app.debug_mode: false`
+- [ ] `secrets.yaml` + схема: `sql/001_init.sql`; если БД уже была без round_parameters → `sql/002_round_parameters.sql`
 - [ ] Nginx site + certbot (§3)
 - [ ] Финал: `https://ab.kotelok.space` открывается без traceback
 
@@ -151,6 +151,7 @@ systemctl status ab-game
 
 | Симптом | Что делать |
 |---------|------------|
+| `relation "ab_game.round_parameters"` | `psql … -f sql/002_round_parameters.sql` |
 | `relation "ab_game.users" does not exist` | §1б: `psql ... -f sql/001_init.sql` |
 | `Port 8501 is already in use` | Использовать **8503**, не 8501/8502 |
 | `status=217/USER` | Несуществующий `User=` в unit → `User=root` |

@@ -67,7 +67,8 @@ def test_effect_flag_true_shifts_within_relative_range() -> None:
     rng = np.random.default_rng(11)
 
     for _ in range(50):
-        round_data = generate_round(game, rng=rng)
+        # Без калибровки — иначе |p_B−p_A| может вырасти сверх range.
+        round_data = generate_round(game, rng=rng, calibrate=False)
         assert round_data.has_effect is True
         p_b = round_data.branch_b.true_p
         assert 0.0 <= p_b <= 1.0
@@ -86,16 +87,15 @@ def test_effect_probability_roughly_half() -> None:
 
 def test_hard_difficulty_effect_rate_near_half_and_not_always_null() -> None:
     """
-    На hard эффект в генераторе ~50%; среди раундов с эффектом
-    z-тест не должен почти всегда давать «эффекта нет».
+    На hard эффект в генераторе ~50%; после калибровки среди want_effect
+    z-тест почти всегда significant.
     """
     root_game = _game_cfg()
     hard = resolve_game_cfg(root_game, DIFFICULTY_HARD)
     assert abs(float(hard["effect_probability"]) - 0.5) < 1e-9
-    assert float(hard["effect_relative_range"]) >= 0.2
 
     rng = np.random.default_rng(2026)
-    n = 400
+    n = 200
     with_effect = 0
     significant_given_effect = 0
     for _ in range(n):
@@ -108,5 +108,4 @@ def test_hard_difficulty_effect_rate_near_half_and_not_always_null() -> None:
             significant_given_effect += 1
 
     assert with_effect >= n * 0.35
-    # При старом range=0.08 доля significant была << 20%; ждём заметно выше.
-    assert significant_given_effect / with_effect >= 0.25
+    assert significant_given_effect / with_effect >= 0.85
