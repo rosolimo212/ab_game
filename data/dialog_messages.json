@@ -41,7 +41,7 @@
       "id": 5,
       "name": "feedback",
       "when": "Экран FEEDBACK (основной текст).",
-      "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — {verdict}.\n\nБалл за раунд: {points}.\n\nНиже — целевые и фактические средние.",
+      "default": "{user_name}, раунд {round_index}: {result_line}\n\nZ-тест: p-value = {p_value}, вердикт — **{verdict}**.\n\nБалл за раунд: {points}.\n\nНиже — целевые и фактические средние.",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -49,8 +49,8 @@
     {
       "id": 6,
       "name": "feedback_result_ok",
-      "when": "Подстановка {result_line} при верном ответе.",
-      "default": "верно",
+      "when": "Подстановка {result_line} при верном ответе. Streamlit: :green[…].",
+      "default": ":green[верно]",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -58,8 +58,8 @@
     {
       "id": 7,
       "name": "feedback_result_fail",
-      "when": "Подстановка {result_line} при неверном ответе.",
-      "default": "неверно",
+      "when": "Подстановка {result_line} при неверном ответе. Streamlit: :red[…].",
+      "default": ":red[неверно]",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -113,7 +113,7 @@
       "id": 13,
       "name": "summary",
       "when": "Экран SUMMARY с результатами.",
-      "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\n\n А теперь сюрприз! Проверяем мета-гипотезу. Можете ли вы на глаз видеть эффект? \n\n Ваша точность лежит в доверительном интервале: ([{ci_low}; {ci_high}]\n\n Это значит, что с p-value = {session_p}, {session_verdict}.\n\n{summary_epilogue}\n\n Сыграем ещё раз? \n\n Подписывайтесь на Kotelok https://t.me/kotelok_longread, там много разного и интересного",
+      "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\n\n А теперь сюрприз! Проверяем мета-гипотезу. Можете ли вы на глаз видеть эффект? \n\n Ваша точность лежит в доверительном интервале: ([{ci_low}; {ci_high}]\n\n Это значит, что с p-value = {session_p}, **{session_verdict}**.\n\n{summary_epilogue}\n\n Сыграем ещё раз? \n\n Подписывайтесь на [Kotelok](https://t.me/kotelok_longread), там много разного и интересного",
       "console": "",
       "telegram": "",
       "browser": ""
