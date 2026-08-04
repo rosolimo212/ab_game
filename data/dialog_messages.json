@@ -113,7 +113,7 @@
       "id": 13,
       "name": "summary",
       "when": "Экран SUMMARY с результатами.",
-      "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\n\n А теперь сюрприз! Проверяем мета-гипотезу. Можете ли вы на глаз видеть эффект? \n\n Ваша точность лежит в доверительном интервале: ([{ci_low}; {ci_high}]\n\n Это значит, что с p-value = {session_p}, {session_verdict}.\n\n Сыграем ещё раз? \n\n Подписывайтесь на Kotelok https://t.me/kotelok_longread, там много разного и интересного",
+      "default": "{user_name}, игра завершена (сложность: {difficulty}).\n\nВерных ответов: {n_correct} из {rounds_total} ({accuracy}).\n\n А теперь сюрприз! Проверяем мета-гипотезу. Можете ли вы на глаз видеть эффект? \n\n Ваша точность лежит в доверительном интервале: ([{ci_low}; {ci_high}]\n\n Это значит, что с p-value = {session_p}, {session_verdict}.\n\n{summary_epilogue}\n\n Сыграем ещё раз? \n\n Подписывайтесь на Kotelok https://t.me/kotelok_longread, там много разного и интересного",
       "console": "",
       "telegram": "",
       "browser": ""
@@ -141,6 +141,33 @@
       "name": "summary_verdict_ns",
       "when": "Итог: отличие от 50% незначимо.",
       "default": "отличие от 50% незначимо",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 27,
+      "name": "summary_epilogue_above_chance",
+      "when": "SUMMARY: значимо лучше 50% (ci_low > 0.5).",
+      "default": "Поздравляем! Кажется, вы умеете отличать графики «на глаз» не хуже статистических методов. Но всё равно не забывайте о том, что ощущения лучше проверять на данных.",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 28,
+      "name": "summary_epilogue_below_chance",
+      "when": "SUMMARY: значимо хуже 50% (ci_high < 0.5).",
+      "default": "Вы можете предсказывать результаты статистически хуже генератора случайных чисел! Это своеобразное, но достижение.",
+      "console": "",
+      "telegram": "",
+      "browser": ""
+    },
+    {
+      "id": 29,
+      "name": "summary_epilogue_ns",
+      "when": "SUMMARY: отличие от 50% незначимо.",
+      "default": "Пока что на текущих данных мы видим, что ваши результаты не сильно отличаются от угадывания. Лучше проверять свои гипотезы математикой.",
       "console": "",
       "telegram": "",
       "browser": ""

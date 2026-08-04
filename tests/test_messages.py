@@ -33,6 +33,49 @@ def test_privacy_notice_exists() -> None:
     assert "персональн" in text.lower()
 
 
+def test_summary_epilogue_triggers() -> None:
+    from core.brain import _summary_epilogue
+    from core.models import SessionScore
+
+    clear_messages_cache()
+    above = SessionScore(
+        n_rounds=20,
+        n_correct=18,
+        accuracy=0.9,
+        ci_low=0.68,
+        ci_high=0.98,
+        p_value=0.001,
+        z_stat=3.0,
+        significant=True,
+        alpha=0.05,
+    )
+    below = SessionScore(
+        n_rounds=20,
+        n_correct=2,
+        accuracy=0.1,
+        ci_low=0.02,
+        ci_high=0.32,
+        p_value=0.001,
+        z_stat=-3.0,
+        significant=True,
+        alpha=0.05,
+    )
+    ns = SessionScore(
+        n_rounds=20,
+        n_correct=10,
+        accuracy=0.5,
+        ci_low=0.3,
+        ci_high=0.7,
+        p_value=0.8,
+        z_stat=0.0,
+        significant=False,
+        alpha=0.05,
+    )
+    assert "Поздравляем" in _summary_epilogue(above, "streamlit")
+    assert "хуже генератора" in _summary_epilogue(below, "streamlit")
+    assert "угадывания" in _summary_epilogue(ns, "streamlit")
+
+
 def test_apply_response_stores_game_and_name() -> None:
     state: dict = {}
     game = GameSession(round_index=1, rounds_per_session=20, user_name="Роман")

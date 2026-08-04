@@ -12,7 +12,20 @@ from __future__ import annotations
 from core.difficulty import difficulty_label
 from core.format_text import fmt_p_value, fmt_pct
 from core.messages import button, message
-from core.models import AppResponse, GameSession, Screen
+from core.models import AppResponse, GameSession, Screen, SessionScore
+
+
+def _summary_epilogue(session: SessionScore, channel: str) -> str:
+    """
+    Фраза после вердикта про p-value на SUMMARY.
+
+    Триггеры по significant и положению Wilson CI относительно 0.5.
+    """
+    if session.significant and session.ci_low > 0.5:
+        return message("summary_epilogue_above_chance", channel)
+    if session.significant and session.ci_high < 0.5:
+        return message("summary_epilogue_below_chance", channel)
+    return message("summary_epilogue_ns", channel)
 
 
 def on_welcome(channel: str, rounds_total: int) -> AppResponse:
@@ -138,6 +151,7 @@ def on_summary(channel: str, game: GameSession) -> AppResponse:
             ci_high=fmt_pct(session.ci_high),
             session_p=fmt_p_value(session.p_value),
             session_verdict=session_verdict,
+            summary_epilogue=_summary_epilogue(session, channel),
         ),
         buttons=[button("export_csv", channel), button("restart", channel)],
         screen=Screen.SUMMARY,

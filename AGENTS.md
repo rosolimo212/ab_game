@@ -145,7 +145,7 @@ tests/
 ```bash
 streamlit run ui/streamlit_app.py
 
-./run_tests.sh              # слой 1: pytest → 60 passed
+./run_tests.sh              # слой 1: pytest → 61 passed
 ./pre_commit_check.sh       # слой 1 + слой 2 (business_checks)
 ```
 
