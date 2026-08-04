@@ -30,7 +30,8 @@
 2. Предельная простота; комментарии **на русском**.
 3. UI без бизнес-логики; домен без I/O.
 4. Тексты пользователя → **только** `data/dialog_messages.json` (в т.ч. метрики FEEDBACK под графиком, оси/hover, вердикты, privacy_notice). Числа → `core/format_text.py` (`fmt_pct` ≤ 2 знака + `%`).
-5. Избыточные тесты: pytest + `business_checks.py` + `./pre_commit_check.sh`.
+5. Избыточные тесты: pytest + `business_checks.py` (в т.ч. стратегии always_effect /
+   always_no_effect на easy/normal/hard) + `./pre_commit_check.sh`.
 6. **Конфиги:** в git только `settings.yaml`. Все остальные `*.yaml` в `.gitignore`.
 7. Коммиты только по просьбе.
 

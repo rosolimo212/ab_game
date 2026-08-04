@@ -33,6 +33,8 @@ from core.logging.factory import build_logger
 from core.logging.noop import NoopLogger
 from core.messages import button, clear_messages_cache, message
 from core.models import (
+    ACTION_DIFFICULTY_EASY,
+    ACTION_DIFFICULTY_HARD,
     ACTION_DIFFICULTY_NORMAL,
     ACTION_GUESS_EFFECT,
     ACTION_GUESS_NO_EFFECT,
@@ -82,6 +84,16 @@ REQUIRED_FILES = [
 
 MAX_LATENCY_SEC = 8.0
 SHORT_SESSION_ROUNDS = 3
+# Полная длина сессии из settings — для стратегий «всегда эффект / всегда нет».
+STRATEGY_SESSION_ROUNDS = int(
+    load_app_config(ROOT / "settings.yaml", None)["game"]["rounds_per_session"]
+)
+
+DIFFICULTY_ACTIONS = (
+    ("easy", ACTION_DIFFICULTY_EASY),
+    ("normal", ACTION_DIFFICULTY_NORMAL),
+    ("hard", ACTION_DIFFICULTY_HARD),
+)
 
 
 class MemoryLogger:
@@ -259,6 +271,63 @@ def _play_full_session(
     if game.session_score is None:
         raise AssertionError("Сессия закончилась без session_score")
     return identity, game
+
+
+def _play_fixed_guess_session(
+    *,
+    difficulty_action: str,
+    difficulty_label: str,
+    always_effect: bool,
+    rounds: int,
+    seed: int,
+    external_id: str,
+) -> GameSession:
+    """Одна полная сессия: на каждом раунде одна и та же догадка."""
+    logger = MemoryLogger()
+    service = AppService(
+        logger=logger,
+        config=_load_config(rounds),
+        rng=np.random.default_rng(seed),
+    )
+    identity = logger.ensure_user("streamlit", external_id)
+    name = f"Bot-{difficulty_label}-{'E' if always_effect else 'N'}"
+    service.handle_start(identity, "streamlit")
+    service.handle_action(
+        identity, "streamlit", ACTION_NAME_ENTERED, {"text": name}
+    )
+    resp = service.handle_action(
+        identity,
+        "streamlit",
+        difficulty_action,
+        {"user_name": name},
+    )
+    game = resp.game
+    if game is None:
+        raise AssertionError("Нет game после выбора сложности")
+
+    guess = ACTION_GUESS_EFFECT if always_effect else ACTION_GUESS_NO_EFFECT
+    for i in range(game.rounds_per_session):
+        fb = service.handle_action(
+            identity,
+            "streamlit",
+            guess,
+            {"game": game, "user_name": name},
+        )
+        if fb.screen != Screen.FEEDBACK or fb.game is None:
+            raise AssertionError(f"Ожидали FEEDBACK на раунде {i + 1}")
+        nxt = service.handle_action(
+            identity,
+            "streamlit",
+            ACTION_NEXT_ROUND,
+            {"game": fb.game, "user_name": name},
+        )
+        game = nxt.game
+        if game is None:
+            raise AssertionError(f"Нет game после next на раунде {i + 1}")
+
+    if game.session_score is None:
+        raise AssertionError("Нет session_score у фиксированной стратегии")
+    return game
 
 
 def check_project_scaffold_exists() -> None:
@@ -510,6 +579,48 @@ def check_sql_init_mentions_ab_game() -> None:
         raise AssertionError("002_round_parameters.sql пустой/битый")
 
 
+def check_constant_guess_strategies_by_difficulty() -> None:
+    """
+    На каждом уровне: игрок всегда жмёт «эффект есть» и всегда «эффекта нет».
+
+    После калибровки доля верных у обеих стратегий должна быть около 50%
+    (не 0 и не 1 на полной сессии). Печатаем accuracy в вывод checks.
+    """
+    rounds = STRATEGY_SESSION_ROUNDS
+    # Допуск на биномиальный шум при ~20 раундах и effect_probability≈0.5.
+    lo, hi = 0.15, 0.85
+    print(f"\n  --- стратегии (сессия {rounds} раундов) ---")
+    for diff_label, diff_action in DIFFICULTY_ACTIONS:
+        for always_effect, strat_label in (
+            (True, "always_effect"),
+            (False, "always_no_effect"),
+        ):
+            seed = 10_000 + (0 if always_effect else 1) * 100 + len(diff_label)
+            # Разные seed по сложности, чтобы не дублировать одну серию.
+            seed += {"easy": 1, "normal": 2, "hard": 3}[diff_label] * 10
+            game = _play_fixed_guess_session(
+                difficulty_action=diff_action,
+                difficulty_label=diff_label,
+                always_effect=always_effect,
+                rounds=rounds,
+                seed=seed,
+                external_id=f"strat-{diff_label}-{strat_label}",
+            )
+            score = game.session_score
+            assert score is not None
+            acc = score.accuracy
+            line = (
+                f"{diff_label:6} | {strat_label:18} | "
+                f"{score.n_correct}/{score.n_rounds} = {acc:.0%}"
+            )
+            print(f"  {line}")
+            if not lo <= acc <= hi:
+                raise AssertionError(
+                    f"Ожидали accuracy ∈ [{lo}, {hi}] для {line}, "
+                    f"получили {acc:.3f} (калибровка/effect_probability?)"
+                )
+
+
 def run_all_checks() -> None:
     checks = [
         ("каркас проекта", check_project_scaffold_exists),
@@ -527,6 +638,10 @@ def run_all_checks() -> None:
         ("нет коллизий user_id", check_no_user_id_collisions),
         (f"латентность сессии < {MAX_LATENCY_SEC} с", check_session_latency_under_limit),
         ("SQL init для ab_game", check_sql_init_mentions_ab_game),
+        (
+            "стратегии always_effect / always_no_effect по сложностям",
+            check_constant_guess_strategies_by_difficulty,
+        ),
     ]
 
     print("business_checks:")

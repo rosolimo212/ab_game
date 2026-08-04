@@ -53,7 +53,7 @@ def warmup_plotly_js_delayed(state: Any, *, delay_sec: float = 1.0) -> None:
             return
         fig = go.Figure()
         fig.update_layout(
-            height=1,
+            height=10,
             margin=dict(l=0, r=0, t=0, b=0),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
